@@ -5,7 +5,7 @@
 
 **1. Team name**
 
-WaveLens
+PiX.lab
 
 ---
 
@@ -67,7 +67,7 @@ We need mentor guidance on two specific questions: (1) Is there a supported Agor
 
 **10. Team representative name**
 
-Zok213
+[Your full name — please fill in before submitting]
 
 ---
 
