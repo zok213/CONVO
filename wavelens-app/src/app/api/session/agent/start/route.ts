@@ -13,7 +13,6 @@ export async function POST(request: NextRequest) {
     const client = new AgoraClient({ area: Area.US, appId, appCertificate: cert });
 
     const agent = new Agent({
-      name: `agent_${Date.now().toString(36)}`,
       instructions: domain === 'maritime'
         ? 'You are a Maritime Vietnamese-English interpreter for port operations and ship crews. Translate spoken Vietnamese into accurate English maritime terminology in real time.'
         : 'You are a helpful voice assistant for general conversation. Translate accurately between Vietnamese and English.',

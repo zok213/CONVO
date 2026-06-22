@@ -100,7 +100,7 @@
 | 1.8 | Server-side @solana/web3.js (not in client) | sec6.0 | [IMP] | |
 | 1.9 | Rust Axum backend (parked) | sec2.1 | [PRT] code written, not deployed | |
 | 1.10 | FastAPI + Redis backend (designed) | sec2.1 | [NA] using Next.js API routes | |
-| 1.11 | Shokz bone-conduction hardware path | sec7.1 | [DSN] needs Android SCO | |
+| 1.11 | Shokz bone-conduction hardware path | sec7.1 | [DSN] needs OS-level BT routing | |
 | 1.12 | Convo AI Device Kit R1 production path | sec7.3 | [DSN] design only (slide) | |
 
 ---
@@ -208,42 +208,35 @@
 
 ```
   +-----------------------------------------------------------------------+
-  |                      SOLANA AUDIT TRAIL FLOW                           |
+  |               METAPLEX CORE SOULBOUND NFT AUDIT FLOW                  |
   |                                                                       |
   |  +---------------+     +-----------------+     +-----------------+     |
-  |  |  Translation  |     |  SHA-256 Hash   |     |  /api/solana/   |     |
-  |  |  Session End  |---> |  (bilingual)    |---> |  record (POST)  |     |
+  |  |  Translation  |     |  Upload Raw     |     |  /api/solana/   |     |
+  |  |  Session End  |---> |  JSON to IPFS   |---> |  record (POST)  |     |
   |  +---------------+     +-----------------+     +--------+--------+     |
   |                                                           |            |
   |                                                           v            |
   |  +----------------------------------------------------------------+   |
-  |  |              @solana/web3.js v1.98.4 (server-side)              |   |
+  |  |              @metaplex-foundation/umi (server-side)            |   |
   |  |                                                                  |   |
-  |  |  Connection("https://api.devnet.solana.com")                    |   |
-  |  |    + Transaction()                                              |   |
-  |  |      + TransactionInstruction(                                   |   |
-  |  |        programId = MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr  |   |
-  |  |        data = JSON.stringify({                                   |   |
-  |  |          h: hexHash,       <- SHA-256 of transcript              |   |
-  |  |          t: timestamp,     <- session end time                   |   |
-  |  |          c: channel,       <- Agora channel name                  |   |
-  |  |          d: domain,        <- "maritime" | "coaching"            |   |
-  |  |          m: messageCount   <- number of translations              |   |
-  |  |        })                                                        |   |
-  |  |        + sign(keypair)                                           |   |
-  |  |    = sendAndConfirmTransaction()                                 |   |
-  |  |      returns txSignature (receiptId)                             |   |
+  |  |  Umi("https://api.devnet.solana.com")                           |   |
+  |  |    + create(umi, {                                              |   |
+  |  |        asset: generateSigner(umi),                              |   |
+  |  |        name: "WaveLens Safety Pass",                            |   |
+  |  |        uri: ipfsUrl,                                            |   |
+  |  |        plugins: [                                               |   |
+  |  |          { type: 'PermanentFreezeDelegate', frozen: true },     |   |
+  |  |          { type: 'Attributes', attributeList: [                 |   |
+  |  |              { key: 'latest_audit_hash', value: hash },         |   |
+  |  |              { key: 'timestamp', value: timestamp }             |   |
+  |  |            ]                                                    |   |
+  |  |          }                                                      |   |
+  |  |        ]                                                        |   |
+  |  |      }).sendAndConfirm(umi)                                     |   |
+  |  |      returns Asset Public Key                                    |   |
   |  +----------------------------------------------------------------+   |
   |                                                                       |
-  |  +----------------------------------------------------------------+   |
-  |  |                     VERIFY FLOW                                  |   |
-  |  |  GET /api/solana/verify?txSignature=...                         |   |
-  |  |    -> Connection.getTransaction(txSignature)                     |   |
-  |  |    -> find Memo instruction in transaction.instructions[]        |   |
-  |  |    -> Base64 decode -> JSON.parse -> return SolanaReceiptData    |   |
-  |  +----------------------------------------------------------------+   |
-  |                                                                       |
-  |  Solana Explorer: https://explorer.solana.com/tx/{sig}?cluster=devnet |
+  |  Solana Explorer: https://explorer.solana.com/address/{id}?cluster=devnet |
   +-----------------------------------------------------------------------+
 ```
 
@@ -251,43 +244,23 @@
 
 | # | Item | TDD Ref | Status | Verified |
 |---|---|---|---|---|
-| 4.1 | @solana/web3.js v1.98.4 installed | sec6.0 | [IMP] | |
-| 4.2 | lib/solana-connection.ts - Connection singleton on devnet | sec6.0 | [IMP] | |
-| 4.3 | lib/solana-connection.ts - getKeypair() env var or auto-gen | sec6.0 | [IMP] | |
-| 4.4 | lib/solana-connection.ts - recordReceipt() via Memo program | sec6.0 | [IMP] | |
-| 4.5 | lib/solana-connection.ts - verifyReceipt() parses Memo | sec6.0 | [IMP] | |
-| 4.6 | lib/solana-utils.ts - sha256Hex() function | sec5.3 | [IMP] | |
-| 4.7 | lib/solana-utils.ts - SolanaReceiptData type | sec5.3 | [IMP] | |
-| 4.8 | /api/solana/record - POST endpoint using web3.js | sec6.0 | [IMP] | |
-| 4.9 | /api/solana/verify - GET endpoint using web3.js | sec6.0 | [IMP] | |
-| 4.10 | @solana/web3.js imported only in server API routes | constraint | [IMP] | |
-| 4.11 | Explorer link: https://explorer.solana.com/tx/{sig}?cluster=devnet | - | [IMP] | |
-| 4.12 | env.local.example documents SOLANA_PRIVATE_KEY | sec6.0 | [IMP] | |
-| 4.13 | Devnet keypair funded with SOL | sec6.0 | [NIL] needs airdrop | |
-| 4.14 | Integration test: end-to-end record + verify on devnet | sec10.1 | [NIL] not done | |
+| 4.1 | @metaplex-foundation/umi, mpl-core installed | sec7.3 | [IMP] | |
+| 4.2 | lib/solana-connection.ts - Umi singleton on devnet | sec7.3 | [IMP] | |
+| 4.3 | lib/solana-connection.ts - getKeypair() env var or auto-gen | sec7.3 | [IMP] | |
+| 4.4 | lib/solana-connection.ts - recordReceipt() mints Soulbound NFT | sec7.3 | [IMP] | |
+| 4.5 | lib/solana-connection.ts - verifyReceipt() fetches Asset | sec7.3 | [IMP] | |
+| 4.6 | lib/solana-utils.ts - sha256Hex() function | sec7.4 | [IMP] | |
+| 4.7 | /api/solana/record - POST endpoint returns assetId | sec7.3 | [IMP] | |
+| 4.8 | /api/solana/verify - GET endpoint fetches asset attributes | sec7.3 | [IMP] | |
+| 4.9 | @solana/web3.js imported only in server API routes | constraint | [IMP] | |
+| 4.10 | Explorer link: https://explorer.solana.com/address/{id}?cluster=devnet | - | [IMP] | |
+| 4.11 | env.local.example documents SOLANA_PRIVATE_KEY | sec7.3 | [IMP] | |
+| 4.12 | Devnet keypair funded with SOL | sec7.3 | [NIL] needs airdrop | |
+| 4.13 | Integration test: end-to-end record + verify on devnet | sec10.1 | [NIL] not done | |
 
-### 4.3 Two-Account Architecture (Future Design)
+### 4.3 Two-Account Architecture (Deprecated)
 
-```
-  TDD sec6.2 -- TWO-ACCOUNT ARCHITECTURE (NOT IMPLEMENTED -- FUTURE)
-
-  +--------------------+        +----------------------+
-  |   Receipt PDA      |        |   UsageAccount PDA   |
-  |   (write-once)     |        |   (mutable)          |
-  +--------------------+        +----------------------+
-  | session_id         |        | allowance_usdc       |
-  | bilingual_hash     |        | spent_usdc           |
-  | timestamps         |        | owner                |
-  | lang_pair          |        +----------------------+
-  | domain             |
-  +--------------------+        +----------------------+
-                                |   x402 Payment       |
-                                |   USDC per session   |
-                                +----------------------+
-
-  STATUS: [NIL] Memo program approach used instead
-  FUTURE: Deploy custom BPF program when GLIBC 2.34+ available
-```
+STATUS: [NA] Replaced entirely by the Metaplex Core Identity Architecture.
 
 ---
 
@@ -448,9 +421,9 @@
 ```
   +------------------+     +----------------------+
   |  Web Browser      |     |  Shokz OpenRun Pro 2 |
-  |  (Windows)        |     |  (Bone-Conduction)   |
+  |  (Mobile browser) |     |  (Bone-Conduction)   |
   |                   |     |                      |
-  |  Port 3000        |     |  BT Codec: SBC only  |
+  |  Port 3000 / HTTPS|     |  BT Codec: SBC only  |
   |  Next.js dev srv  |     |  Latency: 50-100ms   |
   |  Microphone in    |     |  IP55 (splash proof) |
   |  Speaker out      |     |  AI mic noise cancel |
@@ -459,19 +432,18 @@
             | Bluetooth (SBC)          
             v                          
   +----------------------------------------------+
-  |        ANDROID SCO ROUTING (MANDATORY)        |
+  |        AGORA WEB SDK AUDIO CONFIGURATION      |
   |                                                |
-  |  Set MODE_IN_COMMUNICATION                     |
-  |  -> startBluetoothSco()                        |
-  |  -> Wait SCO_AUDIO_STATE_CONNECTED             |
-  |  -> THEN join Agora channel                    |
-  |  -> AudioProfile: SPEECH_STANDARD              |
+  |  OS Bluetooth Routing                          |
+  |  -> Pair Shokz with phone/computer first       |
+  |  -> OS automatically handles bidirectional BT  |
+  |  -> Use 'speech_standard' encoderConfig        |
+  |  -> Enable AEC, ANS, AGC audio constraints    |
   |                                                |
-  |  OEM Compatibility:                            |
-  |    Samsung  -- [IMP] Reliable                  |
-  |    Xiaomi   -- [PRT] Intermittent              |
-  |    Pixel    -- [IMP] Most reliable             |
-  |    Huawei   -- [NIL] Problematic               |
+  |  Browser Compatibility:                        |
+  |    Chrome Android  -- [IMP] Auto-routes HFP   |
+  |    Safari iOS      -- [PRT] Unpredictable     |
+  |    Chrome Windows  -- [IMP] System default    |
   +----------------------------------------------+
 
   FALLBACK: Phone speaker + SubtitleOverlay.tsx
@@ -483,9 +455,9 @@
 | # | Item | TDD Ref | Status | Verified |
 |---|---|---|---|---|
 | 7.1 | Shokz OpenRun Pro 2 owned and charged | sec7.1 | [IMP] | |
-| 7.2 | Android phone with Agora SDK app installed | sec7.1 | [DSN] web demo only | |
-| 7.3 | Android SCO routing code (setMode, startBluetoothSco) | sec7.2 | [DSN] not implemented | |
-| 7.4 | SCO connect wait before Agora channel join | sec7.2 | [DSN] not implemented | |
+| 7.2 | Mobile phone with browser support | sec7.1 | [IMP] Chrome/Safari | |
+| 7.3 | Agora Web SDK track creation with constraints (AEC/ANS/speech_standard) | sec8.2 | [IMP] | |
+| 7.4 | User-gesture triggered audio play (Safari compatibility) | sec10.2 | [IMP] | |
 | 7.5 | Fallback: phone speaker + subtitles always visible | sec7.2.1 | [IMP] SubtitleOverlay | |
 | 7.6 | Fallback: wired USB-C headphone + mic dongle | sec7.2.1 | [DSN] not tested | |
 | 7.7 | Test Shokz + phone pair BEFORE Demo Day | sec7.2.1 | [NIL] not done | |
@@ -537,7 +509,7 @@
   Voice translation latency  Record + AGENT_METRICS  P50 < 1.5s, P90 < 3s
   VAD accuracy (VI)          Play port noise + speak Turn starts within 500ms
                              VI phrases
-  SCO routing                Connect Shokz, run      Audio through
+  Audio routing              Connect Shokz, run      Audio through
                              translator session      bone-conduction within 5s
   Bidirectional translation  Worker VI -> verify EN  Both directions accurate
                              Supervisor EN -> verify VI
@@ -552,7 +524,7 @@
 |---|---|---|---|---|
 | 8.9 | Voice latency P50 < 1.5s | sec10.1 | [NIL] not measured | |
 | 8.10 | VAD accuracy VI start within 500ms | sec10.1 | [NIL] not measured | |
-| 8.11 | SCO routing audio through bone-conduction | sec10.1 | [NIL] not tested | |
+| 8.11 | Audio routing through bone-conduction | sec10.1 | [NIL] not tested | |
 | 8.12 | Bidirectional translation accurate | sec10.1 | [NIL] not tested | |
 | 8.13 | Maritime glossary "ket ballast" -> correct | sec10.1 | [NIL] not tested | |
 | 8.14 | Solana receipt TX visible on explorer | sec10.1 | [NIL] needs funded keypair | |

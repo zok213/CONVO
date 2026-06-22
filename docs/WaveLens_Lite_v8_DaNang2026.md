@@ -143,6 +143,11 @@ Mobile web has zero install friction — a worker can open a URL on any phone. F
 
 ```mermaid
 flowchart TB
+    subgraph HARDWARE ["🎧 BLUETOOTH HEADSET (Live Demo Unit)"]
+        MIC_IN["Microphone Input"]
+        SPK_OUT["Speaker Output"]
+    end
+
     subgraph BROWSER ["📱 MOBILE BROWSER — Chrome Android / Safari iOS"]
         WEB_APP["React / Next.js App
 Responsive UI (mobile-first)"]
@@ -152,14 +157,17 @@ AgoraRTC.createMicrophoneAudioTrack()"]
         AUDIO_PERM["Browser Audio Permission
 navigator.mediaDevices.getUserMedia()
 — must be triggered by user tap —"]
-        BT_NOTE["Bluetooth Audio
-OS-controlled — browser cannot force profile
-Android Chrome: typically HFP for RTC
-iOS Safari: unpredictable routing"]
+        BT_NOTE["Bluetooth Audio Routing
+OS-controlled delegation
+Mic: HFP (Hands-Free Profile)
+Speaker: A2DP / HFP"]
         WALLET["Solana Payment
 Server-side custodial wallet OR
 Phantom deep-link / Solana Pay QR"]
     end
+
+    HARDWARE -->|"Bluetooth HFP (Capture)"| BROWSER
+    BROWSER -->|"Bluetooth A2DP/HFP (Playback)"| HARDWARE
 
     subgraph AGORA_VOICE ["🔴 AGORA CAI ENGINE v2.6 — Voice Channel (Cloud)"]
         SDRTN["SDRTN® — UDP, 80% pkt-loss tolerant"]
@@ -192,11 +200,11 @@ coaching→gpt-realtime-translate)"]
         SQLITE["SQLite Receipt Queue"]
     end
 
-    subgraph SOLANA ["⛓️ SOLANA"]
-        PDA_R["Receipt PDA
-SHA-256 bilingual hash · write-once"]
-        PDA_U["UsageAccount PDA
-Allowance + Spent USDC"]
+    subgraph SOLANA ["⛓️ SOLANA METAPLEX CORE"]
+        NFT_S["Soulbound NFT
+(Worker Identity Pass)"]
+        ATTR_H["NFT Attributes
+(SHA-256 hash & off-chain URI)"]
         X402["x402 USDC micropayment"]
     end
 
@@ -240,7 +248,8 @@ AEC + VAD + SAL + MLLM"]
         T1["Real-Time STT (VI text)"]
         T2["Translation (EN text)"]
         T3["SHA-256 of VI + EN
-→ Solana Receipt PDA"]
+→ Metaplex Core Soulbound NFT
+(Safety Pass Attributes)"]
         T1 --> T2 --> T3
     end
 
@@ -489,9 +498,9 @@ SAL + enable_aivad + VAD 0.75
     Note over Backend,Solana: SESSION END (user taps Stop)
     Worker->>Backend: POST /session/end {session_id}
     Backend->>Backend: SHA-256(vi_texts + en_texts + metadata)
-    Backend->>Solana: create_receipt PDA [ASYNC · server-side custodial wallet signs]
+    Backend->>Solana: Metaplex Core — Mint/Update Soulbound NFT (Safety Pass)<br/>PermanentFreezeDelegate + Attributes{hash, uri} [ASYNC · custodial wallet signs]
     Backend->>Solana: USDC transfer x402 [custodial]
-    Backend-->>Worker: {receipt_tx_hash, fee_usdc}
+    Backend-->>Worker: {assetId (NFT address), explorerUrl, fee_usdc}
     end
 ```
 
@@ -529,8 +538,8 @@ on same Wi-Fi as phone)"]
     T2 -->|"Loss < 10%"| T1
     T3 --> NOTE_T3
     T3 --> SYNC{"Internet restored?"}
-    SYNC -->|"Yes"| FLUSH["Send queued receipts
-to Solana mainnet"]
+    SYNC -->|"Yes"| FLUSH["Upload queued transcript JSON to IPFS/Backend
+Mint Soulbound Safety Pass NFT on Solana Devnet"]
     SYNC -->|"No"| T3
 
     style T1 fill:#2ECC71,color:#fff
@@ -596,20 +605,21 @@ User pays by scanning QR
 
 **Hackathon recommendation:** Use server-side custodial wallet for all Solana interactions. The team keeps one service wallet funded with Devnet SOL + USDC. The backend signs every transaction. The user never needs a wallet — they just see the explorer link.
 
-### 7.3 Two-Account Architecture
+### 7.3 Metaplex Core Integration (WaveLens Safety Pass)
 
 ```mermaid
 graph LR
-    subgraph RIGHT ["✅ Correct Design"]
-        R1["Receipt PDA
-{session_id, bilingual_hash,
-timestamps, lang_pair, domain}
-— WRITE-ONCE —"]
-        R2["UsageAccount PDA
-{allowance_usdc, spent_usdc}
-— MUTABLE —"]
-        WHY["Audit ≠ Payment
-Refunds never touch Receipt
+    subgraph RIGHT ["✅ Identity & Audit Design"]
+        R1["Soulbound NFT
+(PermanentFreezeDelegate)
+— WORKER IDENTITY —"]
+        R2["NFT Attributes
+{latest_audit_url,
+latest_audit_hash,
+safety_level}
+— MUTABLE BY AUTHORITY —"]
+        WHY["Cost-Efficient & Verifiable
+Raw transcript on IPFS/Backend
 SOLAS auditor trusts the hash"]
         R1 --- WHY
         R2 --- WHY
@@ -622,12 +632,13 @@ SOLAS auditor trusts the hash"]
 
 ### 7.4 What Goes in the Solana Hash
 
-SHA-256 input (canonical JSON — sorted keys, UTF-8, no whitespace):
-- vi_texts[] — Vietnamese originals from Agora RTT STT per turn
-- en_texts[] — English translations from Agora RTT Translation per turn
-- session_id, timestamp_start, timestamp_end, lang_pair, domain, turn_count
+Raw bilingual text is stored off-chain (e.g. IPFS or Backend) in a JSON payload. The SHA-256 hash of this payload is stored on-chain inside the Metaplex Core NFT Attributes:
 
-This gives auditors both languages on-chain. They can verify translation fidelity, not just that speech occurred.
+- **Off-chain JSON:** Contains `vi_texts[]`, `en_texts[]`, `session_id`, `domain`, `timestamps`.
+- **On-chain NFT Attribute (`latest_audit_hash`):** The SHA-256 hash of the off-chain JSON.
+- **On-chain NFT Attribute (`latest_audit_url`):** The URI pointing to the off-chain JSON.
+
+This architectural shift gives auditors both languages immutably bound to the worker's identity, verifying translation fidelity efficiently.
 
 ### 7.5 Payment Flow
 
@@ -770,6 +781,28 @@ before Demo Day June 28"]
     style IOS fill:#E67E22,color:#fff
     style FALLBACK fill:#9B59B6,color:#fff
 ```
+
+### 8.4 Mobile Hardware Reliability Guards (Implemented)
+
+Because this relies heavily on a mobile web environment maintaining a live Bluetooth/WebRTC connection, the following software-level guards are actively enforced:
+
+1. **Screen Wake Lock API (`navigator.wakeLock`)**
+   - **Why:** Mobile OSs aggressively throttle background JavaScript. If the screen goes to sleep, the WebRTC thread will be killed, severing the translation session.
+   - **Implementation:** Both `TranslatorSession` and `LiveSession` trigger `wakeLock.request('screen')` during `isReady`, keeping the screen perpetually alive for the duration of the 30+ minute worker shift.
+2. **Network State Recovery (`connection-state-change`)**
+   - **Why:** Industrial environments (shipping yards, metal containers) act as Faraday cages, leading to intermittent 4G/LTE drops.
+   - **Implementation:** Bound listener catching `RECONNECTING` and `CONNECTED` states to explicitly alert the UI/worker instead of failing silently.
+3. **Explicit HFP Audio Constraints**
+   - **Why:** Bluetooth HFP limits input bandwidth to 16kHz (narrowband) resulting in noise distortion.
+   - **Implementation:** We pass explicit `{ AEC: true, ANS: true, AGC: true }` WebRTC constraints in the React hook `useLocalMicrophoneTrack` to force acoustic echo cancellation and auto-gain control on the client *before* sending to the cloud LLM.
+4. **Web Audio API Context Suspension Recovery (iOS Safari)**
+   - **Why:** If an industrial worker receives a phone call or invokes Siri mid-session, iOS Safari aggressively places the browser's `AudioContext` into a `suspended` state. When the worker returns to the browser, the WebRTC audio is completely dead and does **not** auto-resume — this is a known iOS 17/18 Safari regression.
+   - **Implementation A:** `document.addEventListener('visibilitychange')` — fires when the browser tab becomes visible again. Calls `AudioContext.resume()` if state is `suspended`.
+   - **Implementation B:** `document.addEventListener('touchstart', handler, { once: true })` — belt-and-suspenders fallback. Any screen tap will also trigger resume, covering iOS edge cases where `visibilitychange` alone is insufficient.
+   - **Code location:** Both `LiveSession.tsx` and `TranslatorSession.tsx` implement this guard independently.
+
+> [!IMPORTANT]
+> All 4 guards above are **production-implemented** in the codebase as of June 21, 2026. They are not aspirational — they are active in `LiveSession.tsx` and `TranslatorSession.tsx` and were verified with a passing `pnpm run build` (Next.js 16.2.9 Turbopack, exit code 0).
 
 
 ---

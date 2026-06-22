@@ -111,7 +111,7 @@ export default function LiveDemo() {
                         : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                     } ${status !== "idle" ? "opacity-50 cursor-not-allowed" : ""}`}
                   >
-                    {d === "maritime" ? "âš“ Maritime / Industrial" : "ðŸŠ Coaching / General"}
+                    {d === "maritime" ? "🏗 Maritime / Industrial" : "🎯 Coaching / General"}
                   </button>
                 ))}
               </div>
@@ -151,14 +151,14 @@ export default function LiveDemo() {
                 micGranted === false ? (
                   <span className="text-red-500 text-xs flex items-center justify-center gap-1">
                     <AlertCircle className="w-3.5 h-3.5" />
-                    Microphone access required ” please allow mic permission
+                    Microphone access required … please allow mic permission
                   </span>
                 ) : (
                   <span className="text-gray-500">Tap the mic and speak Vietnamese</span>
                 )
               )}
-              {status === "listening" && <span className="text-yellow-600">Listening”</span>}
-              {status === "translating" && <span className="text-green-600">Translating to English”</span>}
+              {status === "listening" && <span className="text-yellow-600">Listening...</span>}
+              {status === "translating" && <span className="text-green-600">Translating to English...</span>}
             </p>
 
             {/* Audio output note */}
@@ -171,13 +171,13 @@ export default function LiveDemo() {
             <div className="space-y-3 max-h-48 overflow-y-auto">
               {turns.length === 0 ? (
                 <p className="text-center text-gray-400 text-xs py-6">
-                  Translated turns will appear here”
+                  Translated turns will appear here...
                 </p>
               ) : (
                 turns.map((turn, i) => (
                   <div key={i} className="p-3 bg-gray-50 rounded-lg border border-gray-100">
                     <div className="text-xs text-gray-400 mb-0.5">
-                      {domain === "maritime" ? "âš“" : "ðŸŠ"} Turn {i + 1}
+                      {domain === "maritime" ? "🏗" : "🎯"} Turn {i + 1}
                     </div>
                     <div className="text-sm font-medium text-gray-900 mb-0.5">
                       VI: {turn.vi}

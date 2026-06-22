@@ -132,7 +132,6 @@ export async function POST(request: NextRequest) {
     // Pipeline: Deepgram (reseller) STT → OpenAI (reseller) LLM → MiniMax (reseller) TTS.
     // Omit vendor API keys for supported models — AgentKit infers reseller presets on start (see Agora Console / billing).
     const agent = new Agent({
-      name: `conversation-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
       instructions,
       greeting: GREETING,
       failureMessage: 'Please wait a moment.',

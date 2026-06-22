@@ -58,7 +58,7 @@ export default function Footer() {
             </div>
             <p className="text-sm text-gray-400 leading-relaxed mb-4">
               Real-time Vietnamese-to-English voice translation for port and ship crews.
-              Built for Convo AI Hackathon 2026, Äại há»c Bách Khoa Äà Náºµng.
+              Built for Convo AI Hackathon 2026, Đại học Bách Khoa Đà Nẵng.
             </p>
             <div className="flex gap-3">
               {["Agora", "Solana", "Shokz"].map((s) => (
@@ -97,7 +97,7 @@ export default function Footer() {
         </div>
 
         <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-gray-800 text-center text-xs sm:text-sm text-gray-600">
-          WaveLens Lite ” built for Agora × Solana Convo AI Hackathon 2026, Äại há»c Bách Khoa Äà Náºµng.
+          WaveLens Lite ” built for Agora × Solana Convo AI Hackathon 2026, Đại học Bách Khoa Đà Nẵng.
         </div>
       </div>
     </footer>

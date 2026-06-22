@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 
@@ -8,6 +8,7 @@ export interface SessionSummaryProps {
   duration: number;
   messageCount: number;
   hash: string;
+  assetId?: string;
   sessionId?: string;
 }
 
@@ -23,6 +24,7 @@ export default function SessionSummary({
   duration,
   messageCount,
   hash,
+  assetId,
   sessionId,
 }: SessionSummaryProps) {
   const [copied, setCopied] = useState(false);
@@ -92,15 +94,19 @@ export default function SessionSummary({
           <div className="break-all font-mono text-[10px] text-white/50 leading-relaxed">{hash}</div>
         </div>
 
-        <a
-          href={`https://explorer.solana.com/tx/${hash}?cluster=devnet`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-2 flex items-center justify-center gap-1.5 rounded-lg border border-blue-500/20 bg-blue-500/5 py-2 text-xs text-blue-400 transition-colors hover:bg-blue-500/10"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-          Verify on Solana Devnet
-        </a>
+        {assetId ? (
+          <a
+            href={`https://explorer.solana.com/address/${assetId}?cluster=devnet`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-2 flex items-center justify-center gap-1.5 rounded-lg border border-blue-500/20 bg-blue-500/5 py-2 text-xs text-blue-400 transition-colors hover:bg-blue-500/10"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            Verify Safety Pass on Solana
+          </a>
+        ) : (
+          <div className="mt-2 text-center text-xs text-white/40">Recording to Solana...</div>
+        )}
       </div>
 
       <button

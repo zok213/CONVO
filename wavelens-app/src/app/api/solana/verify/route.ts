@@ -3,18 +3,18 @@ import { verifyReceipt } from '@/lib/solana-connection';
 
 export async function GET(request: NextRequest) {
   try {
-    const txSignature = request.nextUrl.searchParams.get('tx');
-    if (!txSignature) {
+    const assetId = request.nextUrl.searchParams.get('assetId') || request.nextUrl.searchParams.get('tx');
+    if (!assetId) {
       return NextResponse.json(
-        { error: 'tx query parameter required' },
+        { error: 'assetId query parameter required' },
         { status: 400 },
       );
     }
 
-    const receipt = await verifyReceipt(txSignature);
+    const receipt = await verifyReceipt(assetId);
     if (!receipt) {
       return NextResponse.json(
-        { error: 'Receipt not found or invalid', txSignature },
+        { error: 'Receipt not found or invalid', assetId },
         { status: 404 },
       );
     }
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       receipt,
-      txSignature,
+      assetId,
     });
   } catch (error) {
     console.error('[Solana Verify] Error:', error);

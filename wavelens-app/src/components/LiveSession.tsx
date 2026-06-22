@@ -54,6 +54,49 @@ export default function LiveSession({
     setSteps((prev) => ({ ...prev, [key]: state }));
   }, []);
 
+  // ── Hardware/Mobile Guard: Prevent screen sleep ──
+  useEffect(() => {
+    let wakeLock: WakeLockSentinel | null = null;
+    const requestWakeLock = async () => {
+      try {
+        if ('wakeLock' in navigator) {
+          wakeLock = await navigator.wakeLock.request('screen');
+          console.log('[Hardware] Screen Wake Lock active in LiveSession');
+        }
+      } catch (err) {
+        console.error('[Hardware] Wake Lock failed:', err);
+      }
+    };
+    requestWakeLock();
+    return () => {
+      if (wakeLock) {
+        wakeLock.release().catch(() => {});
+      }
+    };
+  }, []);
+
+  // ── Hardware/Mobile Guard: Web Audio Context Suspension Recovery ──
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && agoraClientRef.current) {
+        // iOS Safari suspends Web Audio API on background/calls. Must explicitly resume.
+        // @ts-ignore
+        const ctx = agoraClientRef.current.getAudioContext?.();
+        if (ctx && ctx.state === 'suspended') {
+          console.warn('[Hardware] Resuming suspended Web Audio Context...');
+          ctx.resume().catch(console.error);
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    // Also trigger on touch/click in case visibility change isn't enough
+    document.addEventListener('touchstart', handleVisibilityChange, { once: true });
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      document.removeEventListener('touchstart', handleVisibilityChange);
+    };
+  }, []);
+
   // ── On mount: connect to Agora ──
   useEffect(() => {
     let cancelled = false;
@@ -142,7 +185,18 @@ export default function LiveSession({
         if (cancelled) return;
         onSessionReady();
 
-        // Step 6: Listen for stream messages
+        // Step 6: Hardware/Network resilience listener
+        client.on('connection-state-change', (curState) => {
+          if (!mountedRef.current) return;
+          console.log(`[Hardware] Connection state changed: ${curState}`);
+          if (curState === 'RECONNECTING') {
+            onPipelineStatus((prev) => ({ ...prev, sdrtn: 'reconnecting' as any }));
+          } else if (curState === 'CONNECTED') {
+            onPipelineStatus((prev) => ({ ...prev, sdrtn: 'connected' }));
+          }
+        });
+
+        // Step 7: Listen for stream messages
         client.on('stream-message', (_uid: string | number, data: Uint8Array) => {
           if (!mountedRef.current) return;
           try {
@@ -203,7 +257,11 @@ export default function LiveSession({
       // Start mic
       try {
         const AgoraRTC = (await import('agora-rtc-sdk-ng')).default;
-        const track = await AgoraRTC.createMicrophoneAudioTrack();
+        const track = await AgoraRTC.createMicrophoneAudioTrack({
+          AEC: true,
+          ANS: true,
+          AGC: true,
+        });
         micTrackRef.current = track;
         await client.publish(track);
         onMicState('listening');

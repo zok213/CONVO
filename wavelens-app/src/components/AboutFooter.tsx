@@ -11,7 +11,7 @@ export default function AboutFooter() {
             <span className="text-[10px] text-gray-500 bg-gray-800 px-1.5 py-0.5 rounded">× Shokz</span>
           </div>
           <p className="text-sm sm:text-base text-gray-400 leading-relaxed">
-            Built for the Convo AI Hackathon 2026 at Äại há»c Bách Khoa Äà Náºµng.
+            Built for the Convo AI Hackathon 2026 at Đại học Bách Khoa Đà Nẵng.
             WaveLens Lite brings real-time Vietnamese-to-English voice translation
             to maritime and industrial workers using bone-conduction audio.
           </p>
@@ -25,7 +25,7 @@ export default function AboutFooter() {
               <span className="text-gray-300 font-medium">
                 Agora × Solana Convo AI Hackathon
               </span>
-              , Äại há»c Bách Khoa Äà Náºµng 2026.
+              , Đại học Bách Khoa Đà Nẵng 2026.
             </p>
             <a
               href="#"

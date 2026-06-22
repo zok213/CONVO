@@ -23,12 +23,12 @@ export async function POST(request: NextRequest) {
       messageCount: messageCount ?? 0,
     };
 
-    const txSignature = await recordReceipt(receiptData);
+    const assetId = await recordReceipt(receiptData);
 
     return NextResponse.json({
       success: true,
-      txSignature,
-      solanaExplorerUrl: `https://explorer.solana.com/tx/${txSignature}?cluster=devnet`,
+      assetId,
+      solanaExplorerUrl: `https://explorer.solana.com/address/${assetId}?cluster=devnet`,
     });
   } catch (error) {
     console.error('[Solana Record] Error:', error);

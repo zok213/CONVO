@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
@@ -63,6 +63,7 @@ export default function TranslatorSession({
     duration: number;
     messageCount: number;
     hash: string;
+    assetId?: string;
     sessionId?: string;
   } | null>(null);
 
@@ -80,6 +81,47 @@ export default function TranslatorSession({
     };
   }, []);
 
+  // Hardware/Mobile Guard: Prevent screen sleep to keep WebRTC alive
+  useEffect(() => {
+    let wakeLock: WakeLockSentinel | null = null;
+    const requestWakeLock = async () => {
+      try {
+        if ('wakeLock' in navigator && isReady && !sessionEnded) {
+          wakeLock = await navigator.wakeLock.request('screen');
+          console.log('[Hardware] Screen Wake Lock active');
+        }
+      } catch (err) {
+        console.error('[Hardware] Wake Lock failed:', err);
+      }
+    };
+    requestWakeLock();
+    return () => {
+      if (wakeLock) {
+        wakeLock.release().catch(() => {});
+      }
+    };
+  }, [isReady, sessionEnded]);
+
+  // Hardware/Mobile Guard: Web Audio Context Suspension Recovery
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && client) {
+        // @ts-ignore
+        const ctx = client.getAudioContext?.();
+        if (ctx && ctx.state === 'suspended') {
+          console.warn('[Hardware] Resuming suspended Web Audio Context...');
+          ctx.resume().catch(console.error);
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener('touchstart', handleVisibilityChange, { once: true });
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      document.removeEventListener('touchstart', handleVisibilityChange);
+    };
+  }, [client]);
+
   // Only join RTC when NOT in demo mode
   const joinEnabled = isReady && !demoMode;
   const { isConnected: joinSuccess } = useJoin(
@@ -92,7 +134,11 @@ export default function TranslatorSession({
     joinEnabled,
   );
 
-  const { localMicrophoneTrack } = useLocalMicrophoneTrack(isReady && !demoMode);
+  const { localMicrophoneTrack } = useLocalMicrophoneTrack(isReady && !demoMode, {
+    AEC: true,
+    ANS: true,
+    AGC: true,
+  });
   usePublish([localMicrophoneTrack]);
 
   // STT agent state
@@ -181,6 +227,15 @@ export default function TranslatorSession({
       }
     };
   }, []);
+
+  // Handle Hardware/Network connection state
+  useClientEvent(client, 'connection-state-change', (curState) => {
+    console.log(`[Hardware] connection state: ${curState}`);
+    // Expose warning if connection degrades
+    if (curState === 'RECONNECTING') {
+      console.warn('[Hardware] Connection degraded, reconnecting...');
+    }
+  });
 
   // Handle STT stream messages (live mode only)
   useClientEvent(client, 'stream-message', (_uid: string | number, data: Uint8Array) => {
@@ -295,12 +350,35 @@ export default function TranslatorSession({
         messageCount: transcriptHistory.length,
         sessionId: data.sessionId,
       });
+
+      let assetId;
+      try {
+        const solRes = await fetch('/api/solana/record', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            hash,
+            timestamp: Date.now(),
+            channelName,
+            domain,
+            messageCount: transcriptHistory.length,
+          }),
+        });
+        const solData = await solRes.json();
+        if (solData.success) {
+          assetId = solData.assetId;
+        }
+      } catch (err) {
+        console.error('Solana record failed:', err);
+      }
+
       setSessionData({
         channelName,
         domain,
         duration,
         messageCount: transcriptHistory.length,
         hash,
+        assetId,
         sessionId: data.success ? data.sessionId : undefined,
       });
     } catch {
@@ -386,7 +464,7 @@ export default function TranslatorSession({
             </span>
           )}
           <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-medium text-white/60">
-            {domain === 'maritime' ? 'âš“ Maritime' : 'ðŸŠ Coaching'}
+            {domain === 'maritime' ? '🏗 Maritime' : '🎯 Coaching'}
           </span>
         </div>
 

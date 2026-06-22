@@ -13,7 +13,7 @@ export default function HeroSection() {
         <div className="max-w-2xl">
           <div className="flex items-center gap-2 mb-4 sm:mb-6">
             <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-widest text-[#06b6d4] bg-[#06b6d4]/10 px-3 py-1 rounded-full">
-              Convo AI Hackathon 2026 ” Äà Náºµng
+              Convo AI Hackathon 2026 ” Đà Nẵng
             </span>
           </div>
 

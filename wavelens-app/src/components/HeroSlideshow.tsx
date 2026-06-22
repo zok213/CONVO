@@ -12,7 +12,7 @@ const slides = [
     id: "wavelens-demo-kit",
     title: "WaveLens Lite Demo Kit",
     tag: "Hackathon Prototype",
-    desc: "Real-time Vietnamese-to-English voice translation for port and ship crews ” through bone-conduction headsets.",
+    desc: "Real-time Vietnamese-to-English voice translation for port and ship crews … through bone-conduction headsets.",
     btnPrimary: { text: "Start Live Demo", href: "/demo" },
     btnSecondary: { text: "View Tech Stack", href: "#technology" },
     imgDesktop: "/images/1st_banner.png",
