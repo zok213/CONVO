@@ -1,118 +1,76 @@
-# CONVO AI Hackathon — Mentor Check-in & Update Form
+# CONVO AI Hackathon — Mentor Check-in Form
+## Plain-text answers — copy each answer directly into the corresponding field
 
 ---
 
-**1. Team Name**
+**1. Team name**
+
 WaveLens
 
 ---
 
-**2. Current Project / Idea Name**
-WaveLens Lite v8.0 — Industrial AI Voice Interpreter for Bone-Conduction Headsets
+**2. Current project / idea name**
+
+WaveLens Lite v8.0 — Hands-Free Industrial AI Voice Interpreter
 
 ---
 
-**3. The Problem Our Team Is Solving**
+**3. The problem your team is solving**
 
-Language barriers in heavy industrial environments — specifically Vietnamese port workers (Da Nang) coordinating with international crews and supervisors — create serious operational and safety risks.
-
-The problem has three compounding layers that generic translation apps cannot address:
-
-- **Hands-free constraint**: Port workers, crane operators, and crew members cannot hold a phone to use Google Translate while operating equipment. A hands-free, voice-first interface is mandatory, not optional.
-- **Extreme noise environment**: Dockyard machinery, ship engines, wind, and metallic echo make standard voice recognition fail badly. Raw audio pushed to a cloud LLM without preprocessing yields high error rates and dangerous mistranslations of safety commands.
-- **No tamper-proof safety audit trail**: When a supervisor issues a safety order in English and a worker confirms in Vietnamese, there is currently no verifiable, immutable record. In the event of an accident, these verbal exchanges are legally critical but entirely unrecorded.
+Port workers and industrial crews in Vietnam (e.g., Da Nang port) face a critical language barrier when coordinating with international supervisors and ship crews. Existing tools like Google Translate fail in this context for three reasons: (1) workers cannot hold a phone while operating equipment — a hands-free solution is mandatory; (2) environments are extremely noisy (machinery, wind, ship engines), causing raw voice recognition to fail on safety-critical commands; (3) there is no tamper-proof record of verbal safety orders exchanged across language barriers, creating legal and compliance gaps when incidents occur.
 
 ---
 
-**4. Brief Solution Description**
+**4. Brief solution description**
 
-WaveLens Lite is a fully hands-free, real-time AI voice interpreter that runs inside a mobile web browser — no app install required. The worker pairs a **Shokz bone-conduction headset** (which transmits audio through the skull, staying open-ear for situational awareness), and the system handles everything from there.
-
-- **Voice-to-Voice translation** is delivered with low latency via the **Agora Conversational AI Engine** (CAI), routing through `gpt-realtime-2` with maritime-domain glossaries injected.
-- **Immutable safety audit receipts** are anchored on **Solana** as Soulbound NFTs (via Metaplex Core), giving each work shift a cryptographically verifiable, non-transferable "Safety Pass" — without requiring the worker to install any crypto wallet.
+WaveLens Lite is a real-time, hands-free AI voice interpreter running in a mobile web browser — no app install required. Workers pair a Shokz bone-conduction headset and speak naturally. The Agora Conversational AI Engine handles voice-to-voice translation with low latency, delivering the translated output directly to the headset. At the end of each session, a SHA-256 fingerprint of the full bilingual transcript is anchored on Solana as a Soulbound NFT (Metaplex Core), creating an immutable, verifiable safety audit record without requiring any crypto wallet from the worker.
 
 ---
 
-**5. What Has the Team Accomplished So Far?**
+**5. What has the team accomplished so far?**
 
-The system is production-complete and hardware-demo-ready as of June 21, 2026. Key engineering milestones:
+The system is production-complete and hardware-demo-ready as of June 21, 2026.
 
-**A. Dual-Channel Audio + Text Pipeline (Fully Implemented)**
-We built a parallel processing architecture over the Agora SDRTN network:
-- *Voice Channel*: Raw audio captured by the browser via `getUserMedia` → WebRTC-level `AEC + ANS + AGC` preprocessing → encoded as Opus and streamed to the Agora CAI Engine → LLM translates and returns synthesized speech → OS routes audio to the Shokz headset via Bluetooth A2DP.
-- *Text Channel*: Simultaneously, Agora's Real-Time Transcription (RTT) service produces a bilingual Vietnamese + English text stream, subscribed to via `client.on('stream-message')`, which drives on-screen subtitle rendering and the audit log pipeline.
+(A) Dual-Channel Pipeline: We built a parallel voice + text pipeline over the Agora SDRTN network. The voice channel handles real-time voice-to-voice translation via the CAI Engine. The text channel runs Agora RTT simultaneously, producing a bilingual Vietnamese/English transcript that drives on-screen subtitles and the audit log.
 
-**B. Solana Custodial Backend (Fully Implemented)**
-A zero-friction, server-side Solana integration using `@metaplex-foundation/umi`:
-- At session end, the backend computes a `SHA-256` hash of the full bilingual transcript, uploads the raw JSON to off-chain storage, and then mints or updates a Soulbound NFT (Metaplex Core `AssetV1`) using a custodial wallet.
-- The NFT's `Attributes` plugin stores the `audit_hash` and `audit_uri`, and is frozen permanently via `PermanentFreezeDelegate`. No Phantom wallet, no browser extension, no friction for the worker.
+(B) Solana Custodial Backend: A fully server-side Solana integration using @metaplex-foundation/umi. At session end, the backend automatically mints or updates a Soulbound NFT (non-transferable via PermanentFreezeDelegate) storing the session hash and off-chain transcript URI in the Attributes plugin. No wallet install required from the worker.
 
-**C. Mobile Hardware Reliability Guards (Fully Implemented)**
-We identified and engineered around 4 critical failure modes unique to mobile web + Bluetooth hardware:
-1. **Screen Wake Lock** (`navigator.wakeLock.request('screen')`): Prevents the OS from killing the WebRTC JS thread when the phone screen sleeps mid-shift.
-2. **iOS AudioContext Recovery** (`visibilitychange` + `touchstart` listeners): iOS Safari suspends the Web Audio API when a phone call is received. We force `AudioContext.resume()` on the worker's return, eliminating silent audio failures.
-3. **Connection State Recovery** (`client.on('connection-state-change')`): Explicitly handles `RECONNECTING` states caused by Faraday-cage signal loss inside steel shipping containers, alerting the worker instead of failing silently.
-4. **HFP Bandwidth Compensation** (`AEC: true, ANS: true, AGC: true` WebRTC constraints): Bluetooth HFP profile caps audio at 16kHz narrowband. Without explicit browser-level preprocessing, wind and machinery noise caused severe LLM hallucination on safety-critical commands.
+(C) Mobile Hardware Reliability — 4 critical guards implemented: (1) Screen Wake Lock API prevents the OS from killing the WebRTC thread when the phone screen sleeps. (2) visibilitychange + touchstart listeners force AudioContext.resume() when iOS Safari suspends audio after a phone call. (3) connection-state-change listener handles network drops inside steel containers. (4) AEC + ANS + AGC WebRTC constraints applied at the browser before audio reaches the cloud, compensating for Bluetooth HFP's narrow 16kHz bandwidth in noisy dock environments.
 
 ---
 
-**6. How We Use the Agora Conversation AI Engine**
+**6. How do you plan to use the Agora Conversation AI Engine?**
 
-Agora CAI serves as the core real-time intelligence layer. Our integration follows a hardware-optimized pipeline:
-
-1. The mobile browser captures audio through `getUserMedia` and applies WebRTC constraints (AEC/ANS/AGC) at the edge before any data leaves the device.
-2. The cleaned Opus audio stream is published to the Agora channel via `useLocalMicrophoneTrack` and `usePublish`.
-3. The Agora CAI Engine hosts two agent instances per session:
-   - **Agent A**: Subscribed to the worker's stream, configured with Vietnamese input and English output with a maritime safety glossary injected via `system_message`.
-   - **Agent B** (supervisor-facing): Mirrors the reverse direction.
-4. The translated audio output is delivered back over the Agora channel, where the OS routes it natively to the paired Bluetooth headset (A2DP profile).
-5. In parallel, Agora RTT surfaces a real-time bilingual text stream that drives the subtitle overlay and audit pipeline via `useClientEvent('stream-message')`.
+Agora CAI is our core real-time intelligence layer. The mobile browser applies WebRTC noise suppression (AEC/ANS/AGC) at the edge before any audio leaves the device, then publishes the cleaned Opus stream to the Agora channel. The CAI Engine runs two agent instances per session — one for the Vietnamese worker (output: English) and one for the English supervisor (output: Vietnamese) — each with a maritime domain glossary injected via system_message. Translated audio is returned over the Agora channel and the OS routes it natively to the Shokz headset via Bluetooth A2DP. Simultaneously, we subscribe to the RTT data stream via stream-message events to drive the subtitle overlay and audit log.
 
 ---
 
-**7. How We Implement Solana Integration**
+**7. How do you plan to implement Solana integration?**
 
-Our Solana integration follows a hybrid on-chain/off-chain model to balance cost, speed, and immutability:
-
-| Layer | What Is Stored | Where |
-|---|---|---|
-| Off-chain | Full raw bilingual transcript JSON | Backend Storage (S3 / IPFS-compatible) |
-| On-chain | SHA-256 hash + storage URI | Solana Devnet — Metaplex Core NFT Attribute |
-
-**Flow:**
-1. Worker taps "End Session" on the mobile UI.
-2. Backend (`POST /api/solana/record`) computes the SHA-256 hash of all `vi_text` + `en_text` turn pairs and the session metadata.
-3. The raw JSON is uploaded to off-chain storage and a URI is returned.
-4. The backend's custodial wallet (funded with Devnet SOL) calls the Metaplex Core program via `@metaplex-foundation/umi` to mint or update a Soulbound NFT.
-5. The NFT's `Attributes` plugin is updated with `{ audit_hash, audit_uri }` and frozen via `PermanentFreezeDelegate` — making it non-transferable and immutable.
-6. The frontend receives the `assetId` and renders a direct Solana Explorer link in the `SessionSummary` component for the worker to share with their supervisor.
+We use a hybrid on-chain / off-chain model. The full raw transcript JSON is stored off-chain (backend storage). Only a SHA-256 hash of the bilingual transcript plus the storage URI are written on-chain. When a session ends, our Node.js backend (POST /api/solana/record) uses a custodial service wallet to sign and submit a Metaplex Core transaction on Solana Devnet. This mints or updates an AssetV1 Soulbound NFT — frozen permanently via PermanentFreezeDelegate — with the hash and URI stored in the Attributes plugin. The worker receives a direct Solana Explorer link in the session summary. No Phantom wallet, no browser extension, zero friction for an industrial worker.
 
 ---
 
-**8. Current Challenges / Areas Needing Mentor Support**
+**8. Current challenges or areas needing mentor support**
 
-**Challenge: VAD-Induced Translation Latency ("Walkie-Talkie Delay")**
+Our main challenge is VAD-induced translation latency. The Agora CAI Engine waits for a ~0.75 second silence (Voice Activity Detection threshold) before triggering translation. When a supervisor issues a multi-clause safety instruction lasting 15–25 seconds, the worker receives no translation until the entire utterance is complete — a dangerous gap in time-critical scenarios.
 
-Our current implementation relies on Agora CAI's Voice Activity Detection (VAD) to determine when a speaker has finished a turn before triggering translation. The effective threshold is approximately 0.75 seconds of silence.
-
-In practice: a crane supervisor issuing a multi-clause safety instruction ("Move the container to Bay 3, secure the lock, and confirm with the ground team") speaks for 15–25 seconds. The worker receives no translation until the entire utterance is complete, which creates a dangerous gap in time-critical scenarios.
-
-**Specific mentor guidance requested:**
-- Is there a supported Agora CAI configuration (API-level parameter or `enable_aivad` tuning) to enable **incremental/streaming translation** — where the LLM begins outputting translated tokens while the speaker is still talking?
-- Alternatively, what is the recommended approach for **VAD chunking** in Agora's architecture to break long utterances into semantically meaningful sub-segments for progressive translation delivery?
+We need mentor guidance on two specific questions: (1) Is there a supported Agora CAI API parameter or enable_aivad configuration to enable incremental/streaming translation, where the LLM begins returning translated tokens while the speaker is still talking? (2) What is the recommended approach for VAD chunking in Agora's architecture to break long utterances into semantically complete sub-segments for progressive translation delivery?
 
 ---
 
-**9. Link to Documentation / Demo / Repo**
+**9. Link to documentation / demo / repo (if any)**
 
-*(A structured PDF containing live demo screenshots, hardware test photos (Shokz + mobile browser), and finalized ASCII architecture diagrams is being prepared and will be submitted separately.)*
+[Attached as files: PDF containing live demo screenshots, hardware test photos (Shokz headset + mobile browser), and system architecture diagrams]
 
 ---
 
-**10. Team Representative Name**
+**10. Team representative name**
+
 Zok213
 
 ---
 
-**11. Team Representative Contact**
-*[Please fill in: Phone / Email / Telegram handle]*
+**11. Team representative contact details**
+
+[Phone / Email / Telegram — please fill in before submitting]
