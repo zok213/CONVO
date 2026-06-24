@@ -192,7 +192,7 @@ export default function ChatbotWidget() {
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto bg-[#F8F9FA] px-4 py-3">
-            {messages.map((msg, i) =>
+            {messages.filter((msg) => msg && msg.role).map((msg, i) =>
               msg.role === "bot" ? <BotMessage key={i} text={msg.text} /> : <UserMessage key={i} text={msg.text} />
             )}
             {isTyping && <TypingDots />}

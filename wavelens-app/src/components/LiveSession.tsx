@@ -100,6 +100,7 @@ export default function LiveSession({
   // ── On mount: connect to Agora ──
   useEffect(() => {
     let cancelled = false;
+    let localClient: any = null;
 
     (async () => {
       try {
@@ -107,6 +108,7 @@ export default function LiveSession({
         updateStep('engine', 'running');
         const AgoraRTC = (await import('agora-rtc-sdk-ng')).default;
         const client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
+        localClient = client;
         agoraClientRef.current = client;
         onPipelineStatus((prev) => ({ ...prev, cai: 'initializing' }));
 
@@ -185,6 +187,46 @@ export default function LiveSession({
         if (cancelled) return;
         onSessionReady();
 
+        // Auto-publish mic — guard against Agora SDK race condition
+        try {
+          console.log('[Hardware] Connection state before mic publish:', client.connectionState);
+
+          // Wait for CONNECTED if not already there
+          if (client.connectionState !== 'CONNECTED') {
+            console.log('[Hardware] Waiting for CONNECTED state before publishing mic...');
+            await new Promise<void>((resolve, reject) => {
+              const timeout = setTimeout(() => reject(new Error('Agora connection timeout (5s)')), 5000);
+              const handler = (curState: string) => {
+                console.log('[Hardware] State change while waiting:', curState);
+                if (curState === 'CONNECTED') {
+                  clearTimeout(timeout);
+                  client.off('connection-state-change', handler);
+                  resolve();
+                } else if (curState === 'DISCONNECTED' || curState === 'FAILED') {
+                  clearTimeout(timeout);
+                  client.off('connection-state-change', handler);
+                  reject(new Error(`Agora connection dropped: ${curState}`));
+                }
+              };
+              client.on('connection-state-change', handler);
+            });
+          }
+
+          console.log('[Hardware] State at publish time:', client.connectionState);
+          const track = await AgoraRTC.createMicrophoneAudioTrack({
+            AEC: true,
+            ANS: true,
+            AGC: true,
+          });
+          micTrackRef.current = track;
+          await client.publish(track);
+          onMicState('listening');
+          console.log('[Hardware] ✅ Microphone auto-published to channel');
+        } catch (micErr) {
+          console.warn('[Hardware] Auto mic publish failed:', micErr);
+          onMicState('error');
+        }
+
         // Step 6: Hardware/Network resilience listener
         client.on('connection-state-change', (curState) => {
           if (!mountedRef.current) return;
@@ -196,16 +238,35 @@ export default function LiveSession({
           }
         });
 
+        // Step 6.5: Subscribe to remote agent audio
+        client.on('user-published', async (user, mediaType) => {
+          if (!mountedRef.current) return;
+          console.log('[Hardware] Remote user published:', user.uid, mediaType);
+          await client.subscribe(user, mediaType);
+          if (mediaType === 'audio') {
+            const remoteAudioTrack = user.audioTrack;
+            if (remoteAudioTrack) {
+              remoteAudioTrack.play();
+              console.log('[Hardware] Playing remote audio from:', user.uid);
+            }
+          }
+        });
+
+        client.on('user-unpublished', (user) => {
+          console.log('[Hardware] Remote user unpublished:', user.uid);
+        });
+
         // Step 7: Listen for stream messages
         client.on('stream-message', (_uid: string | number, data: Uint8Array) => {
           if (!mountedRef.current) return;
           try {
             const raw = new TextDecoder().decode(data);
+            console.log('[Hardware] Received stream message:', raw);
             const msg = JSON.parse(raw);
-            const viText = msg.transcript || msg.viText || '';
-            const enText = msg.translations?.[0]?.texts?.join(' ') || msg.enText || '';
+            const viText = msg.transcript || msg.viText || msg.text || msg.content || '';
+            const enText = msg.translations?.[0]?.texts?.join(' ') || msg.enText || msg.translated_text || '';
             const ts = msg.time || msg.timestamp || Date.now();
-            const isFinal = msg.isFinal ?? msg.translations?.[0]?.isFinal ?? true;
+            const isFinal = msg.isFinal ?? msg.is_final ?? msg.translations?.[0]?.isFinal ?? true;
 
             if (!viText && !enText) return;
 
@@ -244,7 +305,23 @@ export default function LiveSession({
       }
     })();
 
-    return () => { cancelled = true; };
+    return () => { 
+      cancelled = true; 
+      const sid = sessionIdRef.current;
+      if (sid) {
+        fetch('/api/session/end', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId: sid }),
+        }).catch(() => {});
+      }
+      if (micTrackRef.current) {
+        try { micTrackRef.current.stop(); micTrackRef.current.close(); } catch {}
+      }
+      if (localClient) {
+        try { localClient.leave(); } catch {}
+      }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -287,26 +364,6 @@ export default function LiveSession({
     (window as any).__wavelensToggleMic = toggleMic;
     return () => { delete (window as any).__wavelensToggleMic; };
   }, [toggleMic]);
-
-  // ── Cleanup ──
-  useEffect(() => {
-    return () => {
-      const sid = sessionIdRef.current;
-      if (sid) {
-        fetch('/api/session/end', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sessionId: sid }),
-        }).catch(() => {});
-      }
-      if (micTrackRef.current) {
-        try { micTrackRef.current.stop(); micTrackRef.current.close(); } catch {}
-      }
-      if (agoraClientRef.current) {
-        try { agoraClientRef.current.leave(); } catch {}
-      }
-    };
-  }, []);
 
   // ── Render loading checklist ──
   const allDone = Object.values(steps).every((s) => s === 'done');

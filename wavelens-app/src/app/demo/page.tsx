@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
@@ -289,8 +289,42 @@ export default function DemoPage() {
 
   const toggleMic = useCallback(() => {
     const fn = (window as any).__wavelensToggleMic;
-    if (fn) fn();
-  }, []);
+    if (fn) {
+      fn();
+      try {
+        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        const now = ctx.currentTime;
+        
+        if (micState === 'idle') {
+          // Turning ON: crisp ascending beep
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(500, now);
+          osc.frequency.exponentialRampToValueAtTime(1000, now + 0.08);
+          gain.gain.setValueAtTime(0, now);
+          gain.gain.linearRampToValueAtTime(0.15, now + 0.02);
+          gain.gain.linearRampToValueAtTime(0, now + 0.1);
+          osc.start(now);
+          osc.stop(now + 0.1);
+        } else {
+          // Turning OFF: soft descending beep
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(800, now);
+          osc.frequency.exponentialRampToValueAtTime(400, now + 0.15);
+          gain.gain.setValueAtTime(0, now);
+          gain.gain.linearRampToValueAtTime(0.1, now + 0.02);
+          gain.gain.linearRampToValueAtTime(0, now + 0.15);
+          osc.start(now);
+          osc.stop(now + 0.15);
+        }
+      } catch (e) {
+        console.warn('Audio API failed to play UI sound', e);
+      }
+    }
+  }, [micState]);
 
   return (
     <div className="fixed inset-0 z-[9998] flex flex-col bg-[#000] text-white overflow-hidden">
@@ -436,15 +470,13 @@ export default function DemoPage() {
       />
 
       {/* ═══ LiveSession (handles Agora, shows loading when not ready) ═══ */}
-      {!sessionReady && (
-        <div className="fixed inset-0 z-30 flex items-center justify-center bg-[#000]/90">
-          <LiveSession
-            domain={domain} langSrc={langPair.source} langTgt={langPair.target}
-            onTurns={setTurns} onMicState={setMicState}
-            onPipelineStatus={setPipelineStatus} onSessionReady={() => setSessionReady(true)}
-          />
-        </div>
-      )}
+      <div className={`fixed inset-0 z-30 flex items-center justify-center bg-[#000]/90 transition-opacity duration-300 ${sessionReady ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+        <LiveSession
+          domain={domain} langSrc={langPair.source} langTgt={langPair.target}
+          onTurns={setTurns} onMicState={setMicState}
+          onPipelineStatus={setPipelineStatus} onSessionReady={() => setSessionReady(true)}
+        />
+      </div>
 
       {/* ═══ Animations ═══ */}
       <style jsx global>{`
