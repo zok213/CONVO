@@ -2,6 +2,13 @@
 .env
 .env.local
 .env.*.local
+key_and_secret.txt
+*.secret
+*.secret.*
+*.key
+*.key.*
+.solana-keypair.json
+**/.solana-keypair.json
 
 # Dependencies
 node_modules/

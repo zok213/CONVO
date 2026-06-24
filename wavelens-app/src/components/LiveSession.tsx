@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { CheckCircle2, Loader2, AlertCircle, XCircle } from 'lucide-react';
+import { decodeSttMessage } from '@/lib/agora-stt';
 
 export type Domain = 'maritime' | 'coaching';
 export interface Turn {
@@ -22,6 +23,72 @@ interface LiveSessionProps {
 
 type StepState = 'pending' | 'running' | 'done' | 'error';
 
+type ParsedStreamTurn = {
+  sourceText: string;
+  translatedText: string;
+  timestamp: number;
+  isFinal: boolean;
+};
+
+function matchesLanguage(actual: string | undefined, expected: string): boolean {
+  if (!actual) return false;
+  const actualLower = actual.toLowerCase();
+  const expectedLower = expected.toLowerCase();
+  const expectedBase = expectedLower.split('-')[0];
+  const actualBase = actualLower.split('-')[0];
+  return actualLower === expectedLower || actualBase === expectedBase;
+}
+
+function parseJsonTurn(raw: string, langTgt: string): ParsedStreamTurn | null {
+  const msg = JSON.parse(raw);
+  const translations = Array.isArray(msg.translations) ? msg.translations : [];
+  const translation = translations.find((item: any) => matchesLanguage(item.lang, langTgt)) ?? translations[0];
+
+  const sourceText = String(msg.transcript ?? msg.viText ?? msg.sourceText ?? msg.text ?? msg.content ?? '').trim();
+  const translatedText = String(
+    Array.isArray(translation?.texts)
+      ? translation.texts.join(' ')
+      : translation?.text ?? msg.enText ?? msg.translatedText ?? msg.translated_text ?? '',
+  ).trim();
+
+  if (!sourceText && !translatedText) return null;
+
+  return {
+    sourceText,
+    translatedText,
+    timestamp: Number(msg.time ?? msg.timestamp ?? Date.now()),
+    isFinal: Boolean(msg.isFinal ?? msg.is_final ?? translation?.isFinal ?? translation?.is_final ?? true),
+  };
+}
+
+function parseProtobufTurn(data: Uint8Array, langTgt: string): ParsedStreamTurn | null {
+  const msg = decodeSttMessage(data);
+  if (!msg || msg.dataType !== 'translate') return null;
+
+  const translation = msg.translations.find((item) => matchesLanguage(item.lang, langTgt)) ?? msg.translations[0];
+  const sourceText = (msg.transcript ?? '').trim();
+  const translatedText = translation?.texts.join(' ').trim() ?? '';
+
+  if (!sourceText && !translatedText) return null;
+
+  return {
+    sourceText,
+    translatedText,
+    timestamp: msg.time || Date.now(),
+    isFinal: translation?.isFinal ?? msg.words.every((word) => word.isFinal),
+  };
+}
+
+function parseStreamTurn(data: Uint8Array, langTgt: string): ParsedStreamTurn | null {
+  try {
+    const raw = new TextDecoder().decode(data);
+    if (raw.trim().startsWith('{')) return parseJsonTurn(raw, langTgt);
+  } catch {
+    // Fall through to protobuf parser.
+  }
+  return parseProtobufTurn(data, langTgt);
+}
+
 export default function LiveSession({
   domain, langSrc, langTgt, onTurns, onMicState, onPipelineStatus, onSessionReady,
 }: LiveSessionProps) {
@@ -38,6 +105,8 @@ export default function LiveSession({
   const agoraClientRef = useRef<any>(null);
   const micTrackRef = useRef<any>(null);
   const sessionIdRef = useRef<string | null>(null);
+  const agentIdRef = useRef<string | null>(null);
+  const rttAgentIdRef = useRef<string | null>(null);
   const channelRef = useRef<string | null>(null);
   const uidRef = useRef<string | null>(null);
   const tokenRef = useRef<string | null>(null);
@@ -151,13 +220,20 @@ export default function LiveSession({
         const agentRes = await fetch('/api/session/agent/start', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ channel: sessionData.channel, uid: sessionData.uid, domain }),
+          body: JSON.stringify({
+            channel: sessionData.channel,
+            uid: sessionData.uid,
+            domain,
+            langSrc,
+            langTgt,
+          }),
         });
         if (!agentRes.ok) {
           const errData = await agentRes.json().catch(() => ({}));
           throw new Error(errData.error || 'Agent start failed');
         }
-        await agentRes.json();
+        const agentData = await agentRes.json();
+        agentIdRef.current = agentData.agentId ?? agentData.agent_id ?? null;
         if (cancelled) return;
         updateStep('agent', 'done');
 
@@ -166,12 +242,19 @@ export default function LiveSession({
         const rttRes = await fetch('/api/session/rtt/start', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sessionId: sessionData.sessionId, channel: sessionData.channel }),
+          body: JSON.stringify({
+            sessionId: sessionData.sessionId,
+            channel: sessionData.channel,
+            langSrc,
+            langTgt,
+          }),
         });
         if (rttRes.ok) {
+          const rttData = await rttRes.json().catch(() => ({}));
+          rttAgentIdRef.current = rttData.rttAgentId ?? rttData.agentId ?? null;
           if (!cancelled) {
             updateStep('rtt', 'done');
-            onPipelineStatus((prev) => ({ ...prev, rtt: 'running', solana: 'connected' }));
+            onPipelineStatus((prev) => ({ ...prev, rtt: 'running', solana: 'standby' }));
           }
         } else {
           const rttData = await rttRes.json().catch(() => ({}));
@@ -260,40 +343,61 @@ export default function LiveSession({
         client.on('stream-message', (_uid: string | number, data: Uint8Array) => {
           if (!mountedRef.current) return;
           try {
-            const raw = new TextDecoder().decode(data);
-            console.log('[Hardware] Received stream message:', raw);
-            const msg = JSON.parse(raw);
-            const viText = msg.transcript || msg.viText || msg.text || msg.content || '';
-            const enText = msg.translations?.[0]?.texts?.join(' ') || msg.enText || msg.translated_text || '';
-            const ts = msg.time || msg.timestamp || Date.now();
-            const isFinal = msg.isFinal ?? msg.is_final ?? msg.translations?.[0]?.isFinal ?? true;
+            const parsed = parseStreamTurn(data, langTgt);
+            if (!parsed) return;
 
-            if (!viText && !enText) return;
-
-            const latency = Date.now() - ts;
+            const latency = Date.now() - parsed.timestamp;
             const turnId = turnIdRef.current++;
 
             onTurns((prev) => [...prev, {
               id: turnId,
-              sourceText: viText,
-              translatedText: enText,
+              sourceText: parsed.sourceText,
+              translatedText: parsed.translatedText,
               latencyMs: Math.max(0, latency),
               model: domain === 'maritime' ? 'gpt-realtime-2' : 'gpt-realtime-translate',
               hashConfirmed: false,
               timestamp: Date.now(),
-              isFinal,
+              isFinal: parsed.isFinal,
             }]);
 
-            // Async hash
+            if (!parsed.isFinal || !parsed.sourceText || !parsed.translatedText) return;
+
             fetch('/api/audit/hash', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ viText, enText, sessionId: sessionData.sessionId }),
+              body: JSON.stringify({
+                viText: parsed.sourceText,
+                enText: parsed.translatedText,
+                sessionId: sessionData.sessionId,
+              }),
             }).then((r) => r.json()).then((d) => {
-              if (d.hash && mountedRef.current) {
-                onTurns((prev) => prev.map((t) => t.id === turnId ? { ...t, hashConfirmed: true } : t));
+              if (!d.hash) return null;
+              return fetch('/api/solana/record', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  hash: d.hash,
+                  timestamp: Date.now(),
+                  channelName: sessionData.channel,
+                  domain,
+                  messageCount: turnId + 1,
+                }),
+              });
+            }).then(async (response) => {
+              if (!response) return;
+              const solData = await response.json().catch(() => ({}));
+              if (response.ok && solData.success && mountedRef.current) {
+                onPipelineStatus((prev) => ({ ...prev, solana: 'connected' }));
+                onTurns((prev) => prev.map((turn) => {
+                  if (turn.id !== turnId) return turn;
+                  return { ...turn, hashConfirmed: true };
+                }));
+              } else {
+                onPipelineStatus((prev) => ({ ...prev, solana: 'error' }));
               }
-            }).catch(() => {});
+            }).catch(() => {
+              onPipelineStatus((prev) => ({ ...prev, solana: 'error' }));
+            });
           } catch {}
         });
       } catch (err: unknown) {
@@ -312,7 +416,11 @@ export default function LiveSession({
         fetch('/api/session/end', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sessionId: sid }),
+          body: JSON.stringify({
+            sessionId: sid,
+            agentId: agentIdRef.current,
+            rttAgentId: rttAgentIdRef.current,
+          }),
         }).catch(() => {});
       }
       if (micTrackRef.current) {

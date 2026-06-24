@@ -1,7 +1,7 @@
-import { Connection, Keypair } from '@solana/web3.js';
+import { Keypair } from '@solana/web3.js';
 import { createUmi } from '@metaplex-foundation/umi-bundle-defaults';
-import { keypairIdentity, generateSigner, none, publicKey } from '@metaplex-foundation/umi';
-import { create, updatePlugin, fetchAsset } from '@metaplex-foundation/mpl-core';
+import { keypairIdentity, generateSigner, publicKey } from '@metaplex-foundation/umi';
+import { create, fetchAssetV1, mplCore } from '@metaplex-foundation/mpl-core';
 import type { SolanaReceiptData } from './solana-utils';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -9,9 +9,9 @@ import * as path from 'path';
 /**
  * Solana Metaplex Core integration for WaveLens.
  *
- * Mints a non-transferable (soulbound) NFT for each worker as a "Safety Pass".
- * Updates the NFT's Attributes plugin with the latest session's off-chain IPFS/Backend URL
- * and SHA-256 hash.
+ * Mints a non-transferable Metaplex Core asset for each demo session as a
+ * "Safety Pass" receipt. The Demo MVP stores only the hash and summary
+ * attributes on-chain; raw transcripts are not uploaded by this app.
  */
 
 const DEVNET_RPC = 'https://api.devnet.solana.com';
@@ -42,6 +42,7 @@ function getUmi() {
   
   // Convert web3.js keypair to UMI keypair
   const umiKeypair = umi.eddsa.createKeypairFromSecretKey(kp.secretKey);
+  umi.use(mplCore());
   umi.use(keypairIdentity(umiKeypair));
   
   return umi;
@@ -57,16 +58,13 @@ export async function recordReceipt(data: SolanaReceiptData): Promise<string> {
   
   // Create a new asset signer for this session's Safety Pass
   const asset = generateSigner(umi);
-  
-  // Mock IPFS/Backend URL where the raw JSON is stored
-  const offChainUrl = `https://wavelens-backend.test/audits/${data.hash.substring(0, 8)}.json`;
 
   console.log(`[Solana] Minting Metaplex Core Safety Pass for ${data.hash.substring(0, 8)}...`);
 
-  const tx = await create(umi, {
+  await create(umi, {
     asset,
     name: "WaveLens Safety Pass",
-    uri: offChainUrl, // Points to off-chain metadata JSON
+    uri: '',
     plugins: [
       {
         type: 'PermanentFreezeDelegate',
@@ -79,7 +77,8 @@ export async function recordReceipt(data: SolanaReceiptData): Promise<string> {
           { key: 'domain', value: data.domain },
           { key: 'channel', value: data.channelName },
           { key: 'latest_audit_hash', value: data.hash },
-          { key: 'timestamp', value: data.timestamp.toString() }
+          { key: 'timestamp', value: data.timestamp.toString() },
+          { key: 'message_count', value: data.messageCount.toString() },
         ],
       },
     ],
@@ -97,20 +96,21 @@ export async function recordReceipt(data: SolanaReceiptData): Promise<string> {
 export async function verifyReceipt(assetAddress: string): Promise<SolanaReceiptData | null> {
   try {
     const umi = getUmi();
-    const asset = await fetchAsset(umi, publicKey(assetAddress));
+    const asset = await fetchAssetV1(umi, publicKey(assetAddress));
     
     // @ts-expect-error AssetV1 type incomplete in Umi
     const attrsPlugin = asset.pluginList?.find((p: any) => p.type === 'Attributes') || asset.plugins?.find((p: any) => p.type === 'Attributes');
     if (!attrsPlugin || attrsPlugin.type !== 'Attributes') return null;
     
     const attrs = attrsPlugin.attributeList;
+    const attrValue = (key: string) => attrs.find((a: any) => a.key === key)?.value ?? '';
     
     return {
-      hash: attrs.find((a: any) => a.key === 'latest_audit_hash')?.value ?? '',
-      timestamp: parseInt(attrs.find((a: any) => a.key === 'timestamp')?.value ?? '0', 10),
-      channelName: attrs.find((a: any) => a.key === 'channel')?.value ?? '',
-      domain: attrs.find((a: any) => a.key === 'domain')?.value ?? '',
-      messageCount: 0, // Not stored in this mock to save space
+      hash: attrValue('latest_audit_hash'),
+      timestamp: parseInt(attrValue('timestamp') || '0', 10),
+      channelName: attrValue('channel'),
+      domain: attrValue('domain'),
+      messageCount: parseInt(attrValue('message_count') || '0', 10),
     };
   } catch (err) {
     console.error('[Solana] Verify failed:', err);

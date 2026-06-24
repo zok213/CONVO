@@ -132,6 +132,7 @@ export async function POST(request: NextRequest) {
     // Pipeline: Deepgram (reseller) STT → OpenAI (reseller) LLM → MiniMax (reseller) TTS.
     // Omit vendor API keys for supported models — AgentKit infers reseller presets on start (see Agora Console / billing).
     const agent = new Agent({
+      client,
       instructions,
       greeting: GREETING,
       failureMessage: 'Please wait a moment.',
@@ -173,7 +174,7 @@ export async function POST(request: NextRequest) {
       .withStt(
         new DeepgramSTT({
           model: 'nova-3',
-          language: sttLanguage,
+          language: sttLanguage as any,
         }),
         // BYOK: uncomment the following block and set NEXT_DEEPGRAM_API_KEY
         // new DeepgramSTT({
@@ -222,7 +223,8 @@ export async function POST(request: NextRequest) {
       );
 
     // remoteUids restricts the agent to only process audio from this user
-    const session = agent.createSession(client, {
+    const session = agent.createSession({
+      name: `legacy-agent-${Date.now()}`,
       channel: channel_name,
       agentUid,
       remoteUids: [requester_id],

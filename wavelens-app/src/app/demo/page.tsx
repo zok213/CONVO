@@ -77,7 +77,8 @@ function WaveformStage({ micState }: { micState: MicState }) {
 
         for (let x = 0; x < w; x++) {
           const y = h / 2 + wave.amp * Math.sin((x + offsetRef.current * wave.speed) * wave.freq + wave.phase + (x * 0.001));
-          x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+          if (x === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
         }
         ctx.stroke();
       });
@@ -286,6 +287,20 @@ export default function DemoPage() {
   const confirmedHashes = turns.filter((t) => t.hashConfirmed).length;
   const lastTurn = turns.length > 0 ? turns[turns.length - 1] : null;
   const lastLatency = lastTurn?.latencyMs ?? null;
+  const sessionKey = `${domain}-${langPair.source}-${langPair.target}`;
+
+  useEffect(() => {
+    setSessionReady(false);
+    setTurns([]);
+    setSessionDuration(0);
+    setMicState('connecting');
+    setPipelineStatus({
+      sdrtn: 'disconnected',
+      cai: 'disconnected',
+      rtt: 'standby',
+      solana: 'standby',
+    });
+  }, [sessionKey]);
 
   const toggleMic = useCallback(() => {
     const fn = (window as any).__wavelensToggleMic;
@@ -472,6 +487,7 @@ export default function DemoPage() {
       {/* ═══ LiveSession (handles Agora, shows loading when not ready) ═══ */}
       <div className={`fixed inset-0 z-30 flex items-center justify-center bg-[#000]/90 transition-opacity duration-300 ${sessionReady ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
         <LiveSession
+          key={sessionKey}
           domain={domain} langSrc={langPair.source} langTgt={langPair.target}
           onTurns={setTurns} onMicState={setMicState}
           onPipelineStatus={setPipelineStatus} onSessionReady={() => setSessionReady(true)}

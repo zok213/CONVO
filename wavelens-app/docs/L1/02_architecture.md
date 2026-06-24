@@ -1,111 +1,36 @@
 # 02 Architecture
 
-> Runtime architecture for browser RTC/RTM, Next.js route handlers, and Agora managed agent session.
-
 ## High-Level Shape
 
-- Next.js App Router frontend and API routes in one deployable app.
-- Browser joins Agora RTC channel and uses RTM for transcript/state/metrics/errors.
-- Server-side routes mint token and call Agora Agent Server SDK.
-- Agent executes STT -> LLM -> TTS pipeline in Agora cloud.
-- Optional Solana audit trail: translation sessions compute SHA-256 hash of bilingual transcript, sent to Solana devnet via Memo program instructions for immutable verification.
-
-## Component Graph
-
 ```text
-Browser UI (LandingPage + ConversationComponent)
-  -> GET /api/generate-agora-token
-  -> POST /api/invite-agent
-  -> RTC join/publish mic
-  -> RTM subscribe + AgoraVoiceAI events
-  -> POST /api/log-session (on end)
-  -> POST /api/solana/record (on end, Demo mode)
-
-Next.js API routes
-  -> agora-token (RtcTokenBuilder.buildTokenWithRtm)
-  -> agora-agents (start/stop managed agent)
-  -> log-session (session metadata logging)
-  -> solana/record (send hash to Solana devnet via @solana/web3.js + Memo program)
-
-Solana Devnet
-  -> Memo program pre-deployed at MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr
-  -> Transaction memo stores JSON: { h: hex_hash, t: timestamp, c: channel, d: domain, m: msg_count }
-
-Agora Cloud
-  -> Agent session (Deepgram STT + OpenAI LLM + MiniMax TTS by default)
-  -> RTM payloads (transcript, state, metrics, error)
+Browser /demo
+  -> LiveSession
+  -> POST /api/session/start
+  -> Agora RTC join
+  -> POST /api/session/agent/start
+  -> POST /api/session/rtt/start
+  -> publish mic after CONNECTED
+  -> stream-message JSON/protobuf parsing
+  -> POST /api/audit/hash for final bilingual turns
+  -> POST /api/solana/record
+  -> POST /api/session/end on cleanup
 ```
 
-## Start Sequence
+## Core Runtime
 
-1. UI fetches RTC+RTM token and channel.
-2. UI invites agent and initializes RTM in parallel.
-3. UI mounts conversation view.
-4. `useJoin` connects RTC once `isReady` guard passes.
-5. `AgoraVoiceAI.init()` subscribes transcript/state/metrics streams.
+- `src/app/demo/page.tsx` owns the demo shell, domain/language controls, waveform, metrics drawer, and session remount key.
+- `src/components/LiveSession.tsx` owns Agora RTC lifecycle, mic publication, agent/RTT startup, stream-message parsing, and cleanup.
+- `src/app/api/session/*` owns privileged Agora operations.
+- `src/app/api/solana/*` owns Metaplex Core receipt recording and verification.
 
-## End Sequence
+## Pipeline
 
-1. UI calls `/api/stop-conversation` with `agent_id` if present.
-2. UI logs out RTM client.
-3. RTC hook ownership handles leave/unpublish cleanup.
-4. Component state resets to pre-call shell.
+- Audio: browser microphone -> Agora RTC -> Agora CAI agent -> translated audio back to browser.
+- Text: Agora stream-message payloads -> JSON/protobuf parser -> bilingual turn state.
+- Audit: final bilingual turn -> SHA-256 hash -> Metaplex Core Safety Pass asset.
 
-## Core State Domains
+## Boundaries
 
-- Session bootstrap: `LandingPage` (`agoraData`, `rtmClient`, loading/error flags).
-- RTC transport and mic: `ConversationComponent` + `agora-rtc-react` hooks.
-- Transcript + agent state: `AgoraVoiceAI` events mapped through `lib/conversation.ts`.
-- Metrics and connection issues: `AGENT_METRICS`, `MESSAGE_ERROR`, `SAL_STATUS`, RTM fallback parsing.
-
-## External Dependencies
-
-- `agora-rtc-react` / `agora-rtc-sdk-ng` for media transport.
-- `agora-rtm` for data channel.
-- `agora-agent-client-toolkit` and `agora-agent-uikit` for conversation logic/UI.
-- `agora-agents` for managed agent lifecycle.
-
-## Deployment Modes
-
-- Local development via `pnpm run dev`.
-- Vercel deployment as single Next.js app with server env vars.
-
-## Data and Control Boundaries
-
-- Browser never sees the app certificate; only receives signed short-lived tokens.
-- Agent lifecycle control (`start`, `stop`) is server-routed.
-- Transcript/state/metrics are data-plane RTM events from agent to browser.
-- UI control-plane actions (start/end, renew) originate in `LandingPage`.
-
-## Internal Interfaces Between Components
-
-`LandingPage` -> `ConversationComponent` props:
-
-- `agoraData` (`token`, `uid`, `channel`, optional `agentId`)
-- `rtmClient` (already logged-in and subscribed)
-- `onTokenWillExpire(uid)` callback for dual-token renewal
-- `onEndConversation()` callback for teardown and route stop call
-
-`ConversationComponent` -> child UI components:
-
-- normalized transcript items and current in-progress turn
-- agent visualizer state derived from transport + semantic state
-- connection issue list and derived severity
-- recent metric window for stage latency chips
-
-## Why the App Router Structure Matters
-
-- API handlers under `app/api` co-deploy with UI and share env management.
-- Client components isolate browser-only SDK usage via dynamic import and `ssr: false`.
-- This avoids SSR-side access to WebRTC-dependent modules.
-
-## Change Impact Hints
-
-- Changes to token or invite routes affect both startup and renewal paths.
-- Changes to transcript mapping can break both transcript panel and visualizer semantics.
-- Changes to RTM setup in `LandingPage` affect toolkit subscription readiness.
-
-## Related Deep Dives
-
-- [conversation_lifecycle.md](L2/conversation_lifecycle.md) — Detailed bootstrapping and teardown timeline.
-- [transcript_pipeline.md](L2/transcript_pipeline.md) — Event mapping, UID remap, in-progress/completed segmentation.
+- Browser never receives `NEXT_AGORA_APP_CERTIFICATE`.
+- `AGORA_CUSTOMER_ID`, `AGORA_CUSTOMER_SECRET`, and `SOLANA_PRIVATE_KEY` are server-side only.
+- STT translation can be unavailable without breaking agent-only demo mode.

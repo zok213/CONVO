@@ -7,7 +7,12 @@
     "dev": "next dev --port 3001",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "doctor": "node scripts/doctor.mjs",
+    "verify:api": "node scripts/verify-api-contracts.mjs",
+    "smoke:http": "node scripts/http-smoke.mjs",
+    "verify": "npm run doctor && npm run lint && npm run typecheck && npm run verify:api && npm run build && npm run smoke:http"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.72",
