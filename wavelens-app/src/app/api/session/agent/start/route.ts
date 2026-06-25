@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
       }))
       .withTts(new MiniMaxTTS({ model: 'speech_2_6_turbo', voiceId: 'English_captivating_female1' }));
 
-    const session = agent.createSession(client, {
+    const session = agent.createSession({
       name: `wavelens-agent-${Date.now()}`,
       channel,
       agentUid: '0',

@@ -223,7 +223,7 @@ export async function POST(request: NextRequest) {
       );
 
     // remoteUids restricts the agent to only process audio from this user
-    const session = agent.createSession(client, {
+    const session = agent.createSession({
       name: `legacy-agent-${Date.now()}`,
       channel: channel_name,
       agentUid,
