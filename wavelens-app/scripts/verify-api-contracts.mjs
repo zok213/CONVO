@@ -33,6 +33,7 @@ expect('session/start returns canonical shape', hasAll(sessionStart, [
   'appId',
   'sessionId',
 ]), 'expected token/channel/uid/appId/sessionId response');
+expect('session/start never returns empty token', sessionStart.includes('generatedToken || null'), 'empty token must become null for Agora join');
 
 const agentStart = read('src/app/api/session/agent/start/route.ts');
 expect('session/agent/start accepts language context', hasAll(agentStart, [
@@ -46,6 +47,8 @@ expect('session/agent/start configures managed pipeline', hasAll(agentStart, [
   'OpenAI',
   'MiniMaxTTS',
 ]), 'missing STT/LLM/TTS configuration');
+expect('session/agent/start uses RTC datastream transcripts', agentStart.includes("data_channel: 'datastream'")
+  && !agentStart.includes("data_channel: 'rtm'"), 'frontend listens to RTC stream-message, not RTM');
 
 const rttStart = read('src/app/api/session/rtt/start/route.ts');
 expect('session/rtt/start supports REST join', hasAll(rttStart, [
@@ -56,6 +59,10 @@ expect('session/rtt/start supports REST join', hasAll(rttStart, [
   'rttAgentId',
 ]), 'missing Agora STT REST join contract');
 expect('session/rtt/start standby is explicit 501', rttStart.includes('status: 501'), 'missing optional-credential standby response');
+expect('session/rtt/start subscribes to speaker audio', hasAll(rttStart, [
+  'subscribeAudioUids',
+  'uid ? [uid]',
+]), 'RTT bot must subscribe to browser UID');
 
 const sessionEnd = read('src/app/api/session/end/route.ts');
 expect('session/end accepts cleanup ids', hasAll(sessionEnd, [
@@ -77,7 +84,19 @@ expect('LiveSession passes language context', hasAll(liveSession, [
   '/api/session/rtt/start',
 ]), 'missing backend language context');
 expect('LiveSession keeps CONNECTED publish guard', liveSession.includes("connectionState !== 'CONNECTED'"), 'missing publish guard');
+expect('LiveSession registers RTC listeners before agent start', liveSession.indexOf("client.on('stream-message'") > -1
+  && liveSession.indexOf("client.on('stream-message'") < liveSession.indexOf('/api/session/agent/start'), 'stream-message listener must be active before agent starts');
+expect('LiveSession normalizes empty Agora token', hasAll(liveSession, [
+  'rtcToken',
+  'sessionData.token.trim().length > 0',
+  'client.join(sessionData.appId, sessionData.channel, rtcToken',
+]), 'empty token must be passed to Agora as null');
 expect('LiveSession handles protobuf decoder', liveSession.includes('decodeSttMessage'), 'missing protobuf stream parsing');
+expect('LiveSession handles Agora nested STT JSON', hasAll(liveSession, [
+  'original_transcript',
+  "key.startsWith('results')",
+  'translationPayload?.isFinal',
+]), 'missing nested transcript/translation JSON parser');
 expect('LiveSession does not mark Solana from demo hash only', !liveSession.includes('hashConfirmed: true } : t'), 'legacy demo hash confirmation still present');
 
 const solanaRecord = read('src/app/api/solana/record/route.ts');

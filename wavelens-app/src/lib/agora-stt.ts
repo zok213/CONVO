@@ -98,6 +98,8 @@ export interface SttMessage {
  */
 export function decodeSttMessage(data: Uint8Array): SttMessage | null {
   try {
+    if (!data || data.byteLength === 0) return null;
+
     const TextType = SttMessageRoot.lookupType(
       'Agora.SpeechToText.Text',
     );
@@ -140,7 +142,9 @@ export function decodeSttMessage(data: Uint8Array): SttMessage | null {
       transcript: transcript || undefined,
     };
   } catch (err) {
-    console.warn('[STT] Failed to decode protobuf message:', err);
+    if (process.env.NEXT_PUBLIC_WAVELENS_DEBUG_STT === '1') {
+      console.debug('[STT] Ignored non-STT protobuf message:', err);
+    }
     return null;
   }
 }

@@ -88,11 +88,10 @@ export async function POST(request: NextRequest) {
           end_of_speech: { mode: 'vad', vad_config: { silence_duration_ms: 480 } },
         },
       },
-      advancedFeatures: { enable_rtm: true, enable_tools: false },
+      advancedFeatures: { enable_tools: false },
       parameters: {
-        data_channel: 'rtm',
-        enable_error_message: true,
-        enable_metrics: true,
+        data_channel: 'datastream',
+        audio_scenario: 'aiserver',
       },
     })
       .withStt(new DeepgramSTT({ model: 'nova-3', language: sttLanguage(langSrc) as any }))

@@ -288,6 +288,8 @@ export default function DemoPage() {
   const lastTurn = turns.length > 0 ? turns[turns.length - 1] : null;
   const lastLatency = lastTurn?.latencyMs ?? null;
   const sessionKey = `${domain}-${langPair.source}-${langPair.target}`;
+  const micLevel = Math.max(0, Math.min(100, Number(pipelineStatus.micLevel ?? 0)));
+  const micInputLow = pipelineStatus.micInput === 'low';
 
   useEffect(() => {
     setSessionReady(false);
@@ -299,6 +301,8 @@ export default function DemoPage() {
       cai: 'disconnected',
       rtt: 'standby',
       solana: 'standby',
+      micInput: 'ok',
+      micLevel: '0',
     });
   }, [sessionKey]);
 
@@ -373,6 +377,7 @@ export default function DemoPage() {
           {/* State label below canvas */}
           <div className="absolute bottom-2 left-1/2 -translate-x-1/2">
             <span className={`text-xs font-mono ${
+              micInputLow ? 'text-[#FDBA74] animate-blink' :
               micState === 'listening' ? 'text-[#FF6B35] animate-blink' :
               micState === 'translating' ? 'text-[#00D4FF]' :
               micState === 'connecting' ? 'text-[#00D4FF]' :
@@ -380,6 +385,7 @@ export default function DemoPage() {
             }`}>
               {!sessionReady ? 'Connecting…' :
                micState === 'idle' ? 'Ready to translate' :
+               micInputLow ? 'Mic input low' :
                micState === 'listening' ? 'Listening… |' :
                micState === 'translating' ? 'Translating…' :
                'Error'}
@@ -457,10 +463,16 @@ export default function DemoPage() {
                ) : <Square className="w-4 h-4" />}
           </button>
           <span className={`text-[10px] font-mono ${
-            micState === 'listening' ? 'text-[#FF6B35]' : micState === 'translating' ? 'text-[#00D4FF]' : 'text-[#333]'
+            micInputLow ? 'text-[#FDBA74]' : micState === 'listening' ? 'text-[#FF6B35]' : micState === 'translating' ? 'text-[#00D4FF]' : 'text-[#333]'
           }`}>
-            {!sessionReady ? 'Connecting…' : micState === 'idle' ? 'Tap to speak' : micState === 'listening' ? 'Listening' : 'Translating'}
+            {!sessionReady ? 'Connecting…' : micState === 'idle' ? 'Tap to speak' : micInputLow ? 'Speak closer' : micState === 'listening' ? 'Listening' : 'Translating'}
           </span>
+          <div className="h-1 w-16 rounded-full bg-[#111] overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all ${micInputLow ? 'bg-[#FDBA74]' : 'bg-[#FF6B35]'}`}
+              style={{ width: `${micState === 'listening' ? Math.max(6, micLevel) : 0}%` }}
+            />
+          </div>
         </div>
 
         {/* Right — domain + timer */}

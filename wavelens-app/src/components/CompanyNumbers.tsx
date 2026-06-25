@@ -13,6 +13,8 @@ const numbers = [
   { value: "x402", label: "USDC micropayments" },
 ];
 
+const loopedNumbers = [...numbers, ...numbers, ...numbers, ...numbers];
+
 export default function CompanyNumbers() {
   return (
     <section className="py-12 bg-gray-50">
@@ -27,7 +29,7 @@ export default function CompanyNumbers() {
           slidesPerView="auto"
           className="!mx-0"
         >
-          {[...numbers, ...numbers].map((item, idx) => (
+          {loopedNumbers.map((item, idx) => (
             <SwiperSlide key={idx} className="!w-auto">
               <div className="px-8 text-center min-w-[200px]">
                 <div className="text-3xl md:text-4xl font-heading text-[#FF4D0A] mb-1">
