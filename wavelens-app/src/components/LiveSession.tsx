@@ -30,6 +30,21 @@ type ParsedStreamTurn = {
   isFinal: boolean;
 };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function textFrom(value: unknown): string {
+  if (typeof value === 'string') return value.trim();
+  if (isRecord(value) && typeof value.text === 'string') return value.text.trim();
+  return '';
+}
+
+function timestampFrom(value: unknown, fallback = Date.now()): number {
+  if (!isRecord(value)) return fallback;
+  return Number(value.textTs ?? value.text_ts ?? value.offset ?? value.time ?? value.timestamp ?? fallback);
+}
+
 function matchesLanguage(actual: string | undefined, expected: string): boolean {
   if (!actual) return false;
   const actualLower = actual.toLowerCase();
@@ -41,10 +56,32 @@ function matchesLanguage(actual: string | undefined, expected: string): boolean 
 
 function parseJsonTurn(raw: string, langTgt: string): ParsedStreamTurn | null {
   const msg = JSON.parse(raw);
-  const translations = Array.isArray(msg.translations) ? msg.translations : [];
-  const translation = translations.find((item: any) => matchesLanguage(item.lang, langTgt)) ?? translations[0];
+  const transcript = isRecord(msg.transcript) ? msg.transcript : null;
+  const translationPayload = isRecord(msg.translation) ? msg.translation : null;
+  const originalTranscript = isRecord(translationPayload?.original_transcript)
+    ? translationPayload.original_transcript
+    : null;
 
-  const sourceText = String(msg.transcript ?? msg.viText ?? msg.sourceText ?? msg.text ?? msg.content ?? '').trim();
+  const translatedCandidates = [
+    ...(Array.isArray(msg.translations) ? msg.translations : []),
+    ...(translationPayload
+      ? Object.entries(translationPayload)
+        .filter(([key, value]) => key.startsWith('results') && isRecord(value))
+        .map(([, value]) => value)
+      : []),
+  ].filter(isRecord);
+  const translation = translatedCandidates.find((item) => matchesLanguage(String(item.language ?? item.lang ?? ''), langTgt))
+    ?? translatedCandidates[0];
+
+  const sourceText = (
+    textFrom(transcript)
+    || textFrom(originalTranscript)
+    || textFrom(msg.transcript)
+    || textFrom(msg.viText)
+    || textFrom(msg.sourceText)
+    || textFrom(msg.text)
+    || textFrom(msg.content)
+  ).trim();
   const translatedText = String(
     Array.isArray(translation?.texts)
       ? translation.texts.join(' ')
@@ -56,8 +93,18 @@ function parseJsonTurn(raw: string, langTgt: string): ParsedStreamTurn | null {
   return {
     sourceText,
     translatedText,
-    timestamp: Number(msg.time ?? msg.timestamp ?? Date.now()),
-    isFinal: Boolean(msg.isFinal ?? msg.is_final ?? translation?.isFinal ?? translation?.is_final ?? true),
+    timestamp: timestampFrom(translationPayload ?? transcript ?? msg),
+    isFinal: Boolean(
+      translationPayload?.isFinal
+      ?? translationPayload?.is_final
+      ?? transcript?.isFinal
+      ?? transcript?.is_final
+      ?? msg.isFinal
+      ?? msg.is_final
+      ?? translation?.isFinal
+      ?? translation?.is_final
+      ?? true,
+    ),
   };
 }
 
@@ -128,16 +175,26 @@ export default function LiveSession({
     let wakeLock: WakeLockSentinel | null = null;
     const requestWakeLock = async () => {
       try {
-        if ('wakeLock' in navigator) {
-          wakeLock = await navigator.wakeLock.request('screen');
+        if (document.visibilityState !== 'visible') return;
+        const request = navigator.wakeLock?.request;
+        if (typeof request === 'function') {
+          wakeLock = await request.call(navigator.wakeLock, 'screen');
           console.log('[Hardware] Screen Wake Lock active in LiveSession');
         }
       } catch (err) {
-        console.error('[Hardware] Wake Lock failed:', err);
+        if (err instanceof DOMException && err.name === 'NotAllowedError') return;
+        console.warn('[Hardware] Wake Lock unavailable:', err);
+      }
+    };
+    const handleWakeLockVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && !wakeLock) {
+        requestWakeLock();
       }
     };
     requestWakeLock();
+    document.addEventListener('visibilitychange', handleWakeLockVisibilityChange);
     return () => {
+      document.removeEventListener('visibilitychange', handleWakeLockVisibilityChange);
       if (wakeLock) {
         wakeLock.release().catch(() => {});
       }
@@ -176,6 +233,7 @@ export default function LiveSession({
         // Step 1: Initialize Agora CAI Engine
         updateStep('engine', 'running');
         const AgoraRTC = (await import('agora-rtc-sdk-ng')).default;
+        AgoraRTC.setLogLevel(process.env.NEXT_PUBLIC_WAVELENS_DEBUG_AGORA === '1' ? 1 : 3);
         const client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
         localClient = client;
         agoraClientRef.current = client;
@@ -208,109 +266,26 @@ export default function LiveSession({
         sessionIdRef.current = sessionData.sessionId;
         channelRef.current = sessionData.channel;
         uidRef.current = sessionData.uid;
-        tokenRef.current = sessionData.token;
+        const rtcToken = typeof sessionData.token === 'string' && sessionData.token.trim().length > 0
+          ? sessionData.token
+          : null;
+        tokenRef.current = rtcToken;
 
-        await client.join(sessionData.appId, sessionData.channel, sessionData.token, parseInt(sessionData.uid));
+        await client.join(sessionData.appId, sessionData.channel, rtcToken, parseInt(sessionData.uid, 10));
         if (cancelled) return;
         updateStep('channel', 'done');
         onPipelineStatus((prev) => ({ ...prev, sdrtn: 'connected' }));
 
-        // Step 4: Start CAI agent
-        updateStep('agent', 'running');
-        const agentRes = await fetch('/api/session/agent/start', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            channel: sessionData.channel,
-            uid: sessionData.uid,
-            domain,
-            langSrc,
-            langTgt,
-          }),
-        });
-        if (!agentRes.ok) {
-          const errData = await agentRes.json().catch(() => ({}));
-          throw new Error(errData.error || 'Agent start failed');
-        }
-        const agentData = await agentRes.json();
-        agentIdRef.current = agentData.agentId ?? agentData.agent_id ?? null;
-        if (cancelled) return;
-        updateStep('agent', 'done');
-
-        // Step 5: Start RTT translation
-        updateStep('rtt', 'running');
-        const rttRes = await fetch('/api/session/rtt/start', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sessionId: sessionData.sessionId,
-            channel: sessionData.channel,
-            langSrc,
-            langTgt,
-          }),
-        });
-        if (rttRes.ok) {
-          const rttData = await rttRes.json().catch(() => ({}));
-          rttAgentIdRef.current = rttData.rttAgentId ?? rttData.agentId ?? null;
-          if (!cancelled) {
-            updateStep('rtt', 'done');
-            onPipelineStatus((prev) => ({ ...prev, rtt: 'running', solana: 'standby' }));
+        const subscribeRemoteUser = async (user: any, mediaType: 'audio' | 'video') => {
+          if (!mountedRef.current) return;
+          console.log('[Hardware] Remote user published:', user.uid, mediaType);
+          await client.subscribe(user, mediaType);
+          if (mediaType === 'audio' && user.audioTrack) {
+            user.audioTrack.play();
+            console.log('[Hardware] Playing remote audio from:', user.uid);
           }
-        } else {
-          const rttData = await rttRes.json().catch(() => ({}));
-          if (rttRes.status === 501) {
-            // RTT not configured — that's OK, agent-only mode
-            updateStep('rtt', 'done');
-            onPipelineStatus((prev) => ({ ...prev, rtt: 'standby', solana: 'standby' }));
-          } else {
-            throw new Error(rttData.error || 'RTT start failed');
-          }
-        }
+        };
 
-        if (cancelled) return;
-        onSessionReady();
-
-        // Auto-publish mic — guard against Agora SDK race condition
-        try {
-          console.log('[Hardware] Connection state before mic publish:', client.connectionState);
-
-          // Wait for CONNECTED if not already there
-          if (client.connectionState !== 'CONNECTED') {
-            console.log('[Hardware] Waiting for CONNECTED state before publishing mic...');
-            await new Promise<void>((resolve, reject) => {
-              const timeout = setTimeout(() => reject(new Error('Agora connection timeout (5s)')), 5000);
-              const handler = (curState: string) => {
-                console.log('[Hardware] State change while waiting:', curState);
-                if (curState === 'CONNECTED') {
-                  clearTimeout(timeout);
-                  client.off('connection-state-change', handler);
-                  resolve();
-                } else if (curState === 'DISCONNECTED' || curState === 'FAILED') {
-                  clearTimeout(timeout);
-                  client.off('connection-state-change', handler);
-                  reject(new Error(`Agora connection dropped: ${curState}`));
-                }
-              };
-              client.on('connection-state-change', handler);
-            });
-          }
-
-          console.log('[Hardware] State at publish time:', client.connectionState);
-          const track = await AgoraRTC.createMicrophoneAudioTrack({
-            AEC: true,
-            ANS: true,
-            AGC: true,
-          });
-          micTrackRef.current = track;
-          await client.publish(track);
-          onMicState('listening');
-          console.log('[Hardware] ✅ Microphone auto-published to channel');
-        } catch (micErr) {
-          console.warn('[Hardware] Auto mic publish failed:', micErr);
-          onMicState('error');
-        }
-
-        // Step 6: Hardware/Network resilience listener
         client.on('connection-state-change', (curState) => {
           if (!mountedRef.current) return;
           console.log(`[Hardware] Connection state changed: ${curState}`);
@@ -321,25 +296,31 @@ export default function LiveSession({
           }
         });
 
-        // Step 6.5: Subscribe to remote agent audio
-        client.on('user-published', async (user, mediaType) => {
+        client.enableAudioVolumeIndicator?.();
+        client.on('volume-indicator', (volumes: Array<{ uid: string | number; level: number }>) => {
           if (!mountedRef.current) return;
-          console.log('[Hardware] Remote user published:', user.uid, mediaType);
-          await client.subscribe(user, mediaType);
-          if (mediaType === 'audio') {
-            const remoteAudioTrack = user.audioTrack;
-            if (remoteAudioTrack) {
-              remoteAudioTrack.play();
-              console.log('[Hardware] Playing remote audio from:', user.uid);
-            }
+          const localVolume = volumes.find((volume) => String(volume.uid) === String(sessionData.uid));
+          if (!localVolume) return;
+          onPipelineStatus((prev) => ({
+            ...prev,
+            micLevel: String(Math.round(localVolume.level)),
+          }));
+        });
+
+        client.on('exception', (event: { code: number; msg: string; uid: string | number }) => {
+          if (!mountedRef.current || String(event.uid) !== String(sessionData.uid)) return;
+          if (event.code === 2001 || event.msg === 'AUDIO_INPUT_LEVEL_TOO_LOW') {
+            onPipelineStatus((prev) => ({ ...prev, micInput: 'low' }));
+          } else if (event.code === 4001 || event.msg === 'AUDIO_INPUT_LEVEL_TOO_LOW_RECOVER') {
+            onPipelineStatus((prev) => ({ ...prev, micInput: 'ok' }));
           }
         });
 
+        client.on('user-published', subscribeRemoteUser);
         client.on('user-unpublished', (user) => {
           console.log('[Hardware] Remote user unpublished:', user.uid);
         });
 
-        // Step 7: Listen for stream messages
         client.on('stream-message', (_uid: string | number, data: Uint8Array) => {
           if (!mountedRef.current) return;
           try {
@@ -400,6 +381,64 @@ export default function LiveSession({
             });
           } catch {}
         });
+
+        // Step 4: Start CAI agent
+        updateStep('agent', 'running');
+        const agentRes = await fetch('/api/session/agent/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            channel: sessionData.channel,
+            uid: sessionData.uid,
+            domain,
+            langSrc,
+            langTgt,
+          }),
+        });
+        if (!agentRes.ok) {
+          const errData = await agentRes.json().catch(() => ({}));
+          throw new Error(errData.error || 'Agent start failed');
+        }
+        const agentData = await agentRes.json();
+        agentIdRef.current = agentData.agentId ?? agentData.agent_id ?? null;
+        if (cancelled) return;
+        updateStep('agent', 'done');
+
+        // Step 5: Start RTT translation
+        updateStep('rtt', 'running');
+        const rttRes = await fetch('/api/session/rtt/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: sessionData.sessionId,
+            channel: sessionData.channel,
+            uid: sessionData.uid,
+            langSrc,
+            langTgt,
+          }),
+        });
+        if (rttRes.ok) {
+          const rttData = await rttRes.json().catch(() => ({}));
+          rttAgentIdRef.current = rttData.rttAgentId ?? rttData.agentId ?? null;
+          if (!cancelled) {
+            updateStep('rtt', 'done');
+            onPipelineStatus((prev) => ({ ...prev, rtt: 'running', solana: 'standby' }));
+          }
+        } else {
+          const rttData = await rttRes.json().catch(() => ({}));
+          if (rttRes.status === 501) {
+            // RTT not configured — that's OK, agent-only mode
+            updateStep('rtt', 'done');
+            onPipelineStatus((prev) => ({ ...prev, rtt: 'standby', solana: 'standby' }));
+          } else {
+            throw new Error(rttData.error || 'RTT start failed');
+          }
+        }
+
+        if (cancelled) return;
+        onSessionReady();
+        onMicState('idle');
+
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
         if (!cancelled) {
@@ -442,6 +481,23 @@ export default function LiveSession({
       // Start mic
       try {
         const AgoraRTC = (await import('agora-rtc-sdk-ng')).default;
+        if (client.connectionState !== 'CONNECTED') {
+          await new Promise<void>((resolve, reject) => {
+            const timeout = setTimeout(() => reject(new Error('Agora connection timeout (5s)')), 5000);
+            const handler = (curState: string) => {
+              if (curState === 'CONNECTED') {
+                clearTimeout(timeout);
+                client.off('connection-state-change', handler);
+                resolve();
+              } else if (curState === 'DISCONNECTED' || curState === 'FAILED') {
+                clearTimeout(timeout);
+                client.off('connection-state-change', handler);
+                reject(new Error(`Agora connection dropped: ${curState}`));
+              }
+            };
+            client.on('connection-state-change', handler);
+          });
+        }
         const track = await AgoraRTC.createMicrophoneAudioTrack({
           AEC: true,
           ANS: true,

@@ -12,6 +12,8 @@ const highlights = [
   { icon: FileText, text: "Agora CAI Engine v2.6 powered" },
 ];
 
+const loopedHighlights = [...highlights, ...highlights];
+
 export default function MemberServiceHighlights() {
   return (
     <div
@@ -32,8 +34,8 @@ export default function MemberServiceHighlights() {
           }}
           className="!mx-0"
         >
-          {highlights.map((item) => (
-            <SwiperSlide key={item.text}>
+          {loopedHighlights.map((item, idx) => (
+            <SwiperSlide key={`${item.text}-${idx}`}>
               <div className="flex items-center gap-2 text-white text-sm justify-center">
                 <item.icon className="w-3.5 h-3.5 text-[#06b6d4]" />
                 <span>{item.text}</span>

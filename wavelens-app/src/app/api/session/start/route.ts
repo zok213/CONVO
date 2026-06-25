@@ -15,7 +15,7 @@ export async function POST() {
   const channel = `wavelens-${Date.now()}-${sidCounter}`;
   const uid = String(Math.floor(Math.random() * 90000) + 10000);
   const expiresAt = Math.floor(Date.now() / 1000) + EXPIRATION;
-  const token = RtcTokenBuilder.buildTokenWithUid(
+  const generatedToken = RtcTokenBuilder.buildTokenWithUid(
     appId,
     cert,
     channel,
@@ -24,6 +24,7 @@ export async function POST() {
     expiresAt,
     expiresAt,
   );
+  const token = generatedToken || null;
 
   return NextResponse.json({
     token, channel, uid, appId,

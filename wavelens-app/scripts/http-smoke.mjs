@@ -84,7 +84,8 @@ async function main() {
 
     const session = await request('/api/session/start', { method: 'POST' });
     expect('session/start success status', session.response.status === 200, `status ${session.response.status}`);
-    expect('session/start response shape', typeof session.body?.token === 'string'
+    expect('session/start response shape', (typeof session.body?.token === 'string' || session.body?.token === null)
+      && session.body?.token !== ''
       && /^wavelens-/.test(session.body?.channel ?? '')
       && /^\d+$/.test(session.body?.uid ?? '')
       && /^session_/.test(session.body?.sessionId ?? '')
@@ -161,8 +162,8 @@ async function main() {
     });
     expect('log-session valid -> 200', logValid.response.status === 200 && logValid.body?.success === true, JSON.stringify(logValid.body));
 
-    const chatMissingConfig = await request('/api/chat/completions', { method: 'POST', body: JSON.stringify({}) });
-    expect('chat/completions missing config -> 500', chatMissingConfig.response.status === 500, `status ${chatMissingConfig.response.status}`);
+    const chatEmptyMessages = await request('/api/chat/completions', { method: 'POST', body: JSON.stringify({}) });
+    expect('chat/completions empty messages -> 400', chatEmptyMessages.response.status === 400, `status ${chatEmptyMessages.response.status}`);
 
     const sttMissingConfig = await request('/api/stt-translation', { method: 'POST', body: JSON.stringify({}) });
     expect('stt-translation missing config -> 500', sttMissingConfig.response.status === 500, `status ${sttMissingConfig.response.status}`);

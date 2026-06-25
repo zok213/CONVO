@@ -29,6 +29,23 @@ export function createChatCompletionsHandler({
   streamTextImpl,
 }: ChatCompletionsDeps) {
   return async function POST(request: NextRequest) {
+    let body: ChatBody;
+
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+
+    const messages = body.messages;
+    if (!Array.isArray(messages) || messages.length === 0) {
+      return NextResponse.json({ error: 'messages must be a non-empty array' }, { status: 400 });
+    }
+
+    if (messages.some((message) => typeof message.role !== 'string' || message.content == null)) {
+      return NextResponse.json({ error: 'messages must include role and content' }, { status: 400 });
+    }
+
     // ── Config ────────────────────────────────────────────────────────────────
     const apiKey = process.env.NEXT_LLM_API_KEY;
     const llmUrl = process.env.NEXT_LLM_URL;
@@ -46,20 +63,12 @@ export function createChatCompletionsHandler({
     // @ai-sdk/openai needs a base URL, not the full /chat/completions path
     const baseURL = llmUrl.replace(/\/chat\/completions\/?$/, '');
 
-    let body: ChatBody;
-
-    try {
-      body = await request.json();
-    } catch {
-      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
-    }
-
     const openai = createOpenAIClient({ apiKey, baseURL });
 
     const result = streamTextImpl({
       // modelId is always sourced from the environment — body.model is ignored
       model: openai(modelId),
-      messages: (body.messages ?? []) as NonNullable<
+      messages: messages as NonNullable<
         Parameters<typeof streamText>[0]['messages']
       >,
     });
@@ -67,7 +76,7 @@ export function createChatCompletionsHandler({
     const encoder = new TextEncoder();
     const id = `chatcmpl-${randomUUID()}`;
     const created = Math.floor(Date.now() / 1000);
-    const model = body.model ?? modelId;
+    const model = modelId;
 
     const sseChunk = (
       delta: Record<string, unknown>,

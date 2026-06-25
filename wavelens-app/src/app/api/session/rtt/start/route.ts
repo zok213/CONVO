@@ -5,6 +5,7 @@ const STT_BASE_URL = 'https://api.agora.io/api/speech-to-text/v1/projects';
 type RttStartBody = {
   sessionId?: string;
   channel?: string;
+  uid?: string;
   langSrc?: string;
   langTgt?: string;
 };
@@ -15,7 +16,7 @@ function basicAuth(customerId: string, customerSecret: string): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const { sessionId, channel, langSrc = 'vi-VN', langTgt = 'en-US' } = (await request.json()) as RttStartBody;
+    const { sessionId, channel, uid, langSrc = 'vi-VN', langTgt = 'en-US' } = (await request.json()) as RttStartBody;
     if (!sessionId) return NextResponse.json({ error: 'sessionId required' }, { status: 400 });
     if (!channel) return NextResponse.json({ error: 'channel required' }, { status: 400 });
 
@@ -42,7 +43,12 @@ export async function POST(request: NextRequest) {
         name: `wavelens-rtt-${Date.now()}`,
         languages: [langSrc],
         maxIdleTime: 300,
-        rtcConfig: { channelName: channel, subBotUid, pubBotUid },
+        rtcConfig: {
+          channelName: channel,
+          subBotUid,
+          pubBotUid,
+          subscribeAudioUids: uid ? [uid] : ['all'],
+        },
         translateConfig: {
           languages: [{ source: langSrc, target: [langTgt] }],
         },
