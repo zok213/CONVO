@@ -159,6 +159,7 @@ export default function LiveSession({
   const tokenRef = useRef<string | null>(null);
   const turnIdRef = useRef(0);
   const mountedRef = useRef(true);
+  const micMeterIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -169,6 +170,23 @@ export default function LiveSession({
     if (!mountedRef.current) return;
     setSteps((prev) => ({ ...prev, [key]: state }));
   }, []);
+
+  const stopMicMeter = useCallback(() => {
+    if (micMeterIntervalRef.current) {
+      clearInterval(micMeterIntervalRef.current);
+      micMeterIntervalRef.current = null;
+    }
+    onPipelineStatus((prev) => ({ ...prev, micLevel: '0' }));
+  }, [onPipelineStatus]);
+
+  const startMicMeter = useCallback((track: { getVolumeLevel?: () => number }) => {
+    stopMicMeter();
+    micMeterIntervalRef.current = setInterval(() => {
+      if (!mountedRef.current || micTrackRef.current !== track || typeof track.getVolumeLevel !== 'function') return;
+      const level = Math.round(Math.min(1, Math.max(0, track.getVolumeLevel())) * 100);
+      onPipelineStatus((prev) => ({ ...prev, micLevel: String(level) }));
+    }, 80);
+  }, [onPipelineStatus, stopMicMeter]);
 
   // ── Hardware/Mobile Guard: Prevent screen sleep ──
   useEffect(() => {
@@ -465,6 +483,7 @@ export default function LiveSession({
       if (micTrackRef.current) {
         try { micTrackRef.current.stop(); micTrackRef.current.close(); } catch {}
       }
+      stopMicMeter();
       if (localClient) {
         try { localClient.leave(); } catch {}
       }
@@ -505,8 +524,10 @@ export default function LiveSession({
         });
         micTrackRef.current = track;
         await client.publish(track);
+        startMicMeter(track);
         onMicState('listening');
       } catch {
+        stopMicMeter();
         onMicState('error');
       }
     } else {
@@ -516,12 +537,14 @@ export default function LiveSession({
         micTrackRef.current.stop();
         micTrackRef.current.close();
         micTrackRef.current = null;
+        stopMicMeter();
         onMicState('idle');
       } catch {
+        stopMicMeter();
         onMicState('error');
       }
     }
-  }, [onMicState]);
+  }, [onMicState, startMicMeter, stopMicMeter]);
 
   // Expose toggleMic to parent
   useEffect(() => {

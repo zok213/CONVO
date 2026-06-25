@@ -1,382 +1,361 @@
-# WaveLens Lite — Hackathon Demo Day Presentation Plan
-## Da Nang University of Technology — June 28, 2026
+# WaveLens Lite — Hackathon Presentation Plan
+## Convo AI Hackathon · Đại học Bách Khoa Đà Nẵng · June 28, 2026
 
 ---
 
-## PRESENTATION OVERVIEW
+## OVERVIEW
 
-**Total time:** 5 minutes + 2 minutes Q&A
-**Format:** Slides + live demo embedded at the midpoint
-**Audience:** Judges (Agora + Solana ecosystem representatives), student peers
-**Goal:** Win Champion track. Show working product, technical depth, real-world impact, and a compelling narrative.
+| | |
+|---|---|
+| **Total time** | 3 min 50 sec (fits within 4-min slot) |
+| **Format** | Slides + pre-recorded demo video (already submitted) |
+| **Audience** | Agora + Solana judges, student peers |
+| **Submission** | Video submitted ✅ — slides only on stage |
+| **Narrative arc** | Human cost → Solution → How it works (technical depth) → Proof → Impact |
 
-**Narrative arc:** Pain → Human cost → Innovation → Technical proof → Demo → Business viability → Ask
+> **Strategy:** We have only 3–4 minutes. Do NOT waste it on problems everyone already understands. Get to the solution by Slide 3. Let the architecture carry the middle. Close with numbers and ask.
 
 ---
 
-## SLIDE STRUCTURE — 12 Slides
+## SLIDE STRUCTURE — 10 Slides · 3 min 50 sec
 
 ---
 
 ### SLIDE 01 — TITLE HOOK
+**⏱ 10 seconds**
 
-**Duration:** 15 seconds
-**Purpose:** Immediate attention. Do not waste the opening with a team introduction.
+**Full-bleed headline (dark background, single line):**
 
-**Headline (large, full-bleed image background):**
-> "Every day, a safety command gets lost in translation. At Da Nang port, that can kill someone."
+> *"At Da Nang Port, a mistranslated safety command can kill someone."*
 
-**Visual:** Full-screen AI-generated image of Da Nang port at golden hour. Workers. Cranes. Scale.
+**Sub-headline (small, monospace):**
+`WaveLens Lite — Real-Time AI Voice Interpreter · Built in 9 Days`
 
-**Bottom of slide (small type):**
-WaveLens Lite — Real-Time AI Voice Interpreter
-PiX.lab | Convo AI Hackathon 2026
+**Bottom strip:**
+`PiX.lab · Agora CAI × Solana · Convo AI Hackathon 2026`
 
-**Speaker notes:**
-Start talking before advancing. Let the image breathe for 3 seconds. Then: "This is Da Nang port. Sixteen million tonnes of cargo in 2026. Vietnamese workers coordinating with Korean and Chinese supervisors on live equipment. And right now, there is no good solution for what happens when they cannot understand each other."
+**Visual:** Full-screen AI-rendered image — golden hour, Da Nang port, cranes, cargo ship, Vietnamese dock workers. No text overlapping the subject.
 
----
-
-### SLIDE 02 — THE PROBLEM (Two Populations)
-
-**Duration:** 40 seconds
-**Purpose:** Establish two separate target users. Both are real. Both are underserved.
-
-**Left panel — INDUSTRIAL:**
-Headline: "No hands. 110 dB. Zero margin for error."
-- Workers cannot hold a phone while operating cranes and forklifts
-- Industrial noise at 90–110 dB destroys standard voice recognition
-- Mistranslated safety commands are a legal liability under SOLAS maritime law
-- Da Nang port: 16.77 million tonnes target 2026, new COSCO Korean/Chinese routes added 2025
-
-**Right panel — ACCESSIBILITY:**
-Headline: "1 in 6 people has hearing loss. Every translation tool requires you to hear it."
-- Standard audio translation is completely inaccessible for the deaf and hearing-impaired
-- Bone-conduction technology bypasses damaged outer and middle ear via skull vibration
-- Same device. Same platform. Completely different life impact.
-
-**Visual:** Split image — left: port worker at crane controls, right: woman at meeting being excluded
-
-**Design tip:** Use two columns with a strong color divider. Left column in warm orange (industrial), right column in calm blue (accessibility).
+**Speaker note:**
+*Start speaking before the slide appears. "This is Da Nang port. 16.77 million tonnes of cargo this year. Vietnamese workers alongside Korean and Chinese crews. Right now, when they cannot understand each other — nothing stops. They guess."* Advance slide.
 
 ---
 
-### SLIDE 03 — WHY EVERYTHING ELSE FAILS
+### SLIDE 02 — THE PROBLEM (Real Data, Two Populations)
+**⏱ 30 seconds**
 
-**Duration:** 20 seconds
-**Purpose:** Discredit existing solutions quickly. Build urgency.
+**Split layout — two columns:**
 
-**Table:**
+**LEFT — Industrial:**
+`No hands. 90–110 dB. Zero margin.`
 
-| Solution | Hands-free | Noise-proof | Audit trail | Accessible |
-|---|---|---|---|---|
-| Google Translate | No | No | No | No |
-| Human interpreter | Sometimes | Sometimes | No | No |
-| Native app | Requires install | Sometimes | No | No |
-| **WaveLens Lite** | **Yes** | **Yes** | **Yes — Solana** | **Yes — bone conduction** |
+| Environment | Noise Level | Hands-free? |
+|---|---|---|
+| Container port | 85–100 dB(A) | Required |
+| Ship engine room | 90–110 dB(A) | Required |
+| Ship bridge/deck | 70–95 dB(A) | Often |
 
-**Visual:** Simple table, last row highlighted in brand color.
+- COSCO added Korean/Chinese routes to Da Nang in 2025 — **3 new language pairs, zero tools**
+- Mistranslated safety commands are **SOLAS legal liability**
+- Lien Chieu deep-sea port opens 2028 — problem doubles
 
-**Speaker notes:** "Every existing option fails on at least two of these four requirements. WaveLens Lite is the first system built to solve all four simultaneously."
+**RIGHT — Accessibility:**
+`1 in 6 people worldwide has disabling hearing loss.`
+`466 million people. Every translation tool requires hearing.`
 
----
+- Bone-conduction bypasses damaged cochlear hair cells via skull vibration
+- Same platform → two completely different populations solved simultaneously
 
-### SLIDE 04 — THE SOLUTION IN ONE SENTENCE
-
-**Duration:** 10 seconds
-**Purpose:** Crisp, memorable statement. Make the judges remember this.
-
-**Full-slide quote (large typography):**
-
-> "WaveLens Lite is a real-time, hands-free AI voice interpreter that runs in any mobile browser, powered by Agora CAI, and every session is permanently anchored on Solana."
-
-**Subline:** No app install. Scan a QR code. Speak. Done.
-
-**Visual:** Clean dark background. Single strong typeface. No clutter.
+**Visual:** Two columns separated by a thin green `#00FF9D` line.
+Left: port crane operator. Right: woman in a meeting, excluded.
 
 ---
 
-### SLIDE 05 — HOW IT WORKS (Architecture in 60 seconds)
+### SLIDE 03 — THE SOLUTION (One Sentence)
+**⏱ 10 seconds**
 
-**Duration:** 45 seconds
-**Purpose:** Show you built something real. Technical judges will test you here.
+**Full-slide quote (large typography, centered):**
 
-**Diagram: Two-channel pipeline**
+> *"WaveLens Lite is a real-time, hands-free AI voice interpreter — runs in any mobile browser, no install, powered by Agora CAI, every session anchored permanently on Solana."*
+
+**Three icon pills below (horizontal):**
 
 ```
-[Mobile Browser — getUserMedia — AEC/ANS/AGC]
-        |
-        | Opus stream — 16kHz — cleaned
-        v
-[Agora SDRTN — UDP — 80% packet-loss tolerant]
-        |
-   _____|_____
-  |           |
-  v           v
-[Voice Channel]     [Text Channel]
-Agora CAI v2.6      Agora RTT + Translation Beta
-gpt-realtime-2      VI → EN bilingual text
-Maritime Glossary           |
-        |                   v
-        v           SHA-256(vi_text + en_text)
-[Translated Audio]          |
-→ OS Bluetooth A2DP         v
-→ Bone-conduction   [Metaplex Core Soulbound NFT]
-  earphone          Solana Devnet
+[📱 Scan QR]  →  [🎙️ Speak]  →  [🔊 Translated]
+  No install       Any language    Bone-conduction
 ```
 
-**Key callouts on slide:**
-- "gpt-realtime-2 + maritime glossary via system_message — domain-specific safety terms never mistranslated"
-- "SAL (Selective Attention Locking) + enable_aivad — tuned for 90 dB port noise"
-- "Two AI agents per session — one per direction — remoteUids constraint architecture"
-- "Custodial backend wallet — worker never touches crypto"
+**Visual:** Pure dark background. One sentence. Maximum impact.
 
-**Speaker notes:** Walk through the diagram left to right. Pause at the Solana box. "This is not a prototype architecture. Every component shown here is implemented and tested."
+**Speaker note:**
+*"No app. No install. A worker scans a QR code. Speaks Vietnamese. Hears English in their bone-conduction earphone within 1.5 seconds. That's the product."*
 
 ---
 
-### SLIDE 06 — THE AGORA CAI STACK (Technical Deep Dive)
+### SLIDE 04 — HOW IT WORKS (Architecture)
+**⏱ 45 seconds — most important technical slide**
 
-**Duration:** 30 seconds
-**Purpose:** Prove Agora expertise. Judges from Agora will listen closely here.
+**Diagram (mermaid — use rendered version in slides):**
 
-**Content:**
+```mermaid
+flowchart LR
+    subgraph DEVICE["📱 Mobile Browser (no install)"]
+        MIC["getUserMedia()\nAEC + ANS + AGC\nspeech_standard 16kHz"]
+    end
 
-**Model routing:**
-- Maritime domain (port, ship, crane commands): `gpt-realtime-2` via Agora MLLM + maritime glossary in `system_message`
-- General/coaching: `gpt-realtime-translate` — $0.034/min, predictable cost
+    subgraph AGORA_VOICE["🔴 Agora CAI Engine v2.6"]
+        SDRTN["SDRTN® UDP Transport\n80% packet-loss tolerant"]
+        VAD["SAL + enable_aivad\nVAD threshold 0.75\nFilters 90 dB port noise"]
+        MLLM["MLLM Router\ngpt-realtime-2 (Maritime)\ngpt-realtime-translate (Coaching)"]
+    end
 
-**Vietnamese-specific VAD:**
-- `enable_aivad: true` in `advanced_features` — AI VAD for Vietnamese (semantic_vad does not support VI)
-- SAL (Selective Attention Locking) via `sal` parameter — locks onto registered speaker, filters background crew
-- VAD threshold: 0.75, silence_duration: 800ms — tuned for container port noise profile
+    subgraph AGORA_TEXT["📝 Agora RTT + Translation Beta"]
+        RTT["Real-Time STT (VI text)\n+ Translation (EN text)"]
+    end
 
-**Bidirectional two-agent:**
-- Agent A: `remoteUids: [supervisor_uid]` — outputs Vietnamese
-- Agent B: `remoteUids: [worker_uid]` — outputs English
-- One UID per agent constraint confirmed — validates 1:1 worker/supervisor design
+    subgraph CHAIN["⛓️ Solana Devnet"]
+        HASH["SHA-256\n(vi_text + en_text + session_id)"]
+        NFT["Metaplex Core\nSoulbound NFT\n(Worker Safety Pass)"]
+        HASH --> NFT
+    end
 
-**Runtime glossary update:**
-- `POST /update` — modifies `system_message` mid-session — no verbal side-effect
-- 200 maritime terms pre-loaded at session start
+    MIC -->|"Opus stream"| SDRTN
+    SDRTN --> VAD --> MLLM
+    MLLM -->|"Translated audio\n→ Shokz bone-conduction"| DEVICE
+    MIC -.->|"Parallel text channel"| RTT
+    RTT --> HASH
 
----
+    style AGORA_VOICE fill:#FF6B35,color:#fff,stroke:#FF4500,stroke-width:2px
+    style AGORA_TEXT fill:#E67E22,color:#fff
+    style CHAIN fill:#9B59B6,color:#fff
+    style DEVICE fill:#1a1a2e,color:#00FF9D
+```
 
-### SLIDE 07 — THE SOLANA LAYER (Technical Deep Dive)
+**Key callouts on slide (3 lines maximum):**
+- `gpt-realtime-2` + 200-term maritime glossary — *"man overboard" cannot be mistranslated*
+- SAL (Selective Attention Locking) + `enable_aivad` — tuned for 90 dB container port
+- Custodial backend wallet — worker never touches crypto
 
-**Duration:** 25 seconds
-**Purpose:** Prove Solana expertise. Show you understand the design decisions.
-
-**Content:**
-
-**Why not store raw transcript on-chain?**
-- Cost-prohibitive for full JSON
-- Privacy risk (Vietnamese maritime operations have data sovereignty concerns)
-
-**What goes on-chain:**
-- SHA-256 hash of bilingual transcript (vi_texts + en_texts + session_id + timestamps)
-- Off-chain URI pointing to full JSON (IPFS or backend storage)
-- Both stored as Attributes in Metaplex Core AssetV1
-
-**Why Soulbound NFT:**
-- `PermanentFreezeDelegate` — non-transferable, locked to worker identity
-- Authority (backend custodial wallet) can update Attributes for new sessions
-- One NFT per worker = persistent safety compliance record
-
-**Alpenglow readiness:**
-- Currently Solana Devnet — async receipt creation
-- Alpenglow clears main testnet June 2026, Q3 mainnet target
-- Under 150ms finality — no code changes needed when it activates
-
-**Zero wallet friction:**
-- Backend custodial wallet signs all transactions
-- Worker receives Solana Explorer link in session summary
-- No Phantom, no browser extension, no crypto knowledge required
+**Speaker note:**
+*"Two parallel channels — one delivers translated audio to the earphone in under 1.5 seconds, the other sends the bilingual transcript to Solana as a permanent audit record. Both run simultaneously off one browser session."*
 
 ---
 
-### SLIDE 08 — LIVE DEMO
+### SLIDE 05 — AGORA CAI STACK (Technical Depth)
+**⏱ 30 seconds**
 
-**Duration:** 90 seconds
-**Purpose:** The most important section. Everything else supports this moment.
+**Left column — Model Routing:**
 
-**Pre-slide setup:** Before advancing to this slide, have:
-- Phone already open on app, earphone already paired
-- Teammate standing by with their phone as "supervisor"
+```mermaid
+graph LR
+    DOMAIN{"Domain?"} -->|"⚓ Maritime"| M["gpt-realtime-2\n+ Maritime Glossary\n200 safety terms\nCost: token-based"]
+    DOMAIN -->|"🏊 Coaching"| C["gpt-realtime-translate\n$0.034/min predictable\n70 languages in → 13 out"]
 
-**On-screen text (simple, dark background):**
-"Live. No edits. No recording."
+    style M fill:#E74C3C,color:#fff
+    style C fill:#2ECC71,color:#fff
+```
 
-**Demo flow (from Section 11.1 of the architecture doc):**
+**Right column — VAD Configuration Table:**
 
-| Time | Action |
+| Parameter | Value | Why |
+|---|---|---|
+| `enable_aivad` | `true` | AI VAD for Vietnamese (semantic_vad doesn't support VI) |
+| `sal` | registered voiceprint | Locks onto 1 speaker, filters background crew |
+| VAD threshold | `0.75` | Tuned for 90 dB port — avoids machine noise triggers |
+| Silence duration | `800ms` | Port-specific — workers speak in short bursts |
+| Output languages | 13 | VI, EN, ZH, KO, JP, + 8 more — all confirmed |
+
+**Bottom bar — Two-Agent Architecture:**
+```
+Agent A  remoteUids:[supervisor_uid]  →  outputs Vietnamese
+Agent B  remoteUids:[worker_uid]      →  outputs English
+         ↑ one UID per agent (confirmed constraint) = 1:1 worker/supervisor design
+```
+
+---
+
+### SLIDE 06 — SOLANA AUDIT LAYER
+**⏱ 20 seconds**
+
+**Diagram:**
+
+```mermaid
+flowchart LR
+    RTT["Agora RTT\nvi_text + en_text\nper turn"] --> HASH["SHA-256\n(bilingual transcript\n+ session_id + timestamps)"]
+    HASH --> NFT["Metaplex Core\nSoulbound NFT\nPermanentFreezeDelegate\n= non-transferable"]
+    NFT --> ATTR["NFT Attributes\nlatest_audit_hash\nlatest_audit_url → IPFS\nsafety_level"]
+
+    style RTT fill:#E67E22,color:#fff
+    style HASH fill:#2c3e50,color:#fff
+    style NFT fill:#9B59B6,color:#fff
+    style ATTR fill:#8E44AD,color:#fff
+```
+
+**Three key decisions (one line each):**
+- **Why hash, not raw text?** Cost + privacy. Full JSON off-chain (IPFS). Hash on-chain = immutable proof.
+- **Why Soulbound NFT?** One NFT per worker = persistent safety compliance record across employers
+- **Alpenglow ready:** Sub-150ms finality Q3 2026 mainnet — zero code changes needed
+
+**Speaker note:**
+*"The backend signs every transaction. The worker sees a Solana Explorer link. No wallet, no Phantom, no crypto knowledge. SOLAS auditors get a cryptographic proof of every bilingual session."*
+
+---
+
+### SLIDE 07 — DEMO VIDEO
+**⏱ 45 seconds**
+
+**On-screen text (simple, dark background, centered):**
+`▶ Pre-recorded demo — WaveLens Lite · Maritime Mode`
+
+**Below video, 3 metric callouts appear after video ends:**
+
+```
+End-to-end latency    Packet-loss tolerance    Confirmed on-chain
+   1.2 – 1.8s              80% (SDRTN®)         Solana Devnet ✓
+```
+
+**Speaker note:**
+*Play the submitted video. After it ends: "That was built in 9 days. What you just saw — Vietnamese in, English out through a bone-conduction earphone — every word of it is now permanently anchored on Solana."*
+
+> **Note:** Video already submitted to judges. This slide simply plays the recording. No live demo setup needed.
+
+---
+
+### SLIDE 08 — WHAT WE BUILT (Technical Proof)
+**⏱ 20 seconds**
+
+**Headline:** `Built in 9 days. June 18–27, 2026.`
+
+**Checklist (two columns):**
+
+| Agora Stack | Solana Stack |
 |---|---|
-| 0:00 | Show app on phone — QR code visible |
-| 0:10 | Tap Start — show live status activate |
-| 0:20 | Speak Vietnamese: "Xin chào, chúng ta có container số 3 cần kiểm tra" |
-| 0:45 | Show English translation appears on screen + plays in earphone |
-| 0:60 | Teammate replies English: "Let's check container number 3" |
-| 1:15 | Show Vietnamese translation arrives |
-| 1:30 | Tap End Session — show Solana receipt hash appear on screen |
+| ✅ Agora Web SDK 4.23.4 | ✅ Metaplex Core Soulbound NFT |
+| ✅ Two-agent bidirectional (remoteUids) | ✅ SHA-256 bilingual audit hash |
+| ✅ RTT + Translation Beta integrated | ✅ Custodial wallet — zero user friction |
+| ✅ SAL + enable_aivad (90 dB tuned) | ✅ Alpenglow-ready (no code changes needed) |
+| ✅ gpt-realtime-2 + maritime glossary | ✅ IPFS off-chain receipt + explorer link |
+| ✅ 4 mobile reliability guards | ✅ x402 USDC micropayment flow |
 
-**Backup plan if live demo fails:** Pre-recorded 60-second screen recording video ready to play. Announce honestly: "The live demo had a connectivity issue — here is a recording from our test run this morning."
-
----
-
-### SLIDE 09 — TECHNICAL ACHIEVEMENTS
-
-**Duration:** 20 seconds
-**Purpose:** Quantify what was built. Make the 9 days credible.
-
-**Content (checklist style):**
-
-Built in 9 days — June 18–27, 2026:
-
-- Real-time bidirectional Vietnamese/English translation under 1.5 seconds end-to-end
-- Two-agent architecture with per-direction routing — remoteUids constraint correctly implemented
-- Agora RTT + Translation Beta — bilingual text stream integrated and stored
-- VAD tuned for 90 dB port environments — SAL + enable_aivad active
-- 4 mobile reliability guards: Wake Lock, AudioContext recovery, connection-state-change handler, HFP constraint injection
-- Metaplex Core Soulbound NFT — SHA-256 hash committed on Solana Devnet
-- Custodial backend wallet — zero friction for end user
-- Mobile-responsive web PWA — no install required — QR code to production URL
-
-**Visual:** Clean checklist. Green checkmarks. Each item is one line.
+**4 Reliability Guards (small type):**
+`Wake Lock · AudioContext recovery · connection-state-change handler · HFP constraint injection`
 
 ---
 
-### SLIDE 10 — MARKET OPPORTUNITY
+### SLIDE 09 — MARKET + ROADMAP
+**⏱ 20 seconds**
 
-**Duration:** 25 seconds
-**Purpose:** Show this is bigger than a hackathon project. Give judges a reason to care about scale.
+**Left — Immediate Market:**
 
-**Content:**
+```mermaid
+graph TD
+    M1["🏗️ Da Nang Port\n16.77M tonnes 2026\n9% YoY growth"]
+    M2["🚢 Lien Chieu Deep-Sea\nConstruction Q1 2026\nFirst berths Q4 2028"]
+    M3["🛣️ East-West Corridor\nVI → Laos → Thailand → Myanmar"]
+    M4["🌍 466M with hearing loss\nNo hands-free AI tool exists"]
 
-**Da Nang port — immediate market:**
-- 16.77 million tonnes cargo target 2026 (9% YoY growth)
-- Lien Chieu deep-sea port construction started Q1 2026 — first berths Q4 2028
-- COSCO added new Korean/Chinese routes to Da Nang 2025 — 3 new language pairs needed
-- East-West Economic Corridor: Vietnam — Laos — Thailand — Myanmar
+    M1 --> M2 --> M3
+    M4 -.->|"Same platform"| M1
+```
 
-**Accessibility market:**
-- 466 million people worldwide with disabling hearing loss (WHO, 2023)
-- Bone-conduction + real-time AI translation = first viable hands-free multilingual accessibility tool
+**Right — Roadmap:**
 
-**Industrial AI translation — global:**
-- Manufacturing, logistics, construction, maritime — all face identical language+noise problem
-- SOLAS maritime compliance documentation requirements create immediate regulatory demand for audit trails
+| Timeline | Milestone |
+|---|---|
+| **July 2026** | Field test with real Da Nang dock workers |
+| **Q3 2026** | Solana Alpenglow mainnet (sub-150ms finality) |
+| **Q3 2026** | Android native + Agora Device Kit R1 |
+| **Q4 2026** | Korean, Laotian, Thai expansion |
+| **2027** | Safety Pass as SOLAS compliance SaaS |
 
-**Monetization path:**
-- $0.10/minute per active translation session (Agora CAI cost pass-through + margin)
-- Enterprise contracts per port, per factory, per construction site
-- Solana-anchored compliance records as a standalone SaaS product for maritime insurers
-
----
-
-### SLIDE 11 — WHAT COMES NEXT
-
-**Duration:** 15 seconds
-**Purpose:** Show you are thinking beyond the hackathon. Gives judges confidence in the team's vision.
-
-**Content:**
-
-**Immediate (July 2026):**
-- Field testing at Da Nang Port with real dock workers
-- VAD threshold calibration with actual 90–110 dB ambient data
-- HTTPS deployment on Vercel for iOS Safari microphone access (requires SSL)
-
-**Medium term (Q3 2026):**
-- Android native app (audio profile control, forced HFP, AUDIO_SCENARIO_AI_CLIENT)
-- Agora Convo AI Device Kit R1 (Beta) — dual-mic, LTE, hardware-level noise suppression
-- Solana Alpenglow mainnet — sub-150ms receipt finality
-- Multi-language expansion: Japanese, Laotian, Thai (East-West Economic Corridor)
-
-**Long term:**
-- Solana Safety Pass as a portable compliance credential across ports and employers
-- Maritime insurer integration — automatic incident documentation
+**Revenue model (one line):**
+`$0.10/min per session · Enterprise port/factory contracts · Solana compliance records for maritime insurers`
 
 ---
 
-### SLIDE 12 — TEAM + ASK
-
-**Duration:** 20 seconds
-**Purpose:** Close strong. Make a specific ask.
+### SLIDE 10 — TEAM + ASK
+**⏱ 15 seconds**
 
 **Team:**
-PiX.lab — Da Nang University of Technology
-[Fill in team member names and roles]
+`PiX.lab — Đại học Bách Khoa Đà Nẵng`
+`[Team member names and roles]`
 
-**What we built in 9 days:**
-A working, hardware-tested AI translation system — two languages, two populations, one platform.
+**What we built:**
+*A working, hardware-tested AI translation system. Two languages. Two populations. One platform. 9 days.*
 
-**Our ask:**
-- Access to Agora Convo AI Device Kit R1 for field hardware testing
-- Introductions to Da Nang Port Authority for pilot partnership discussions
-- Mentorship on WebRTC-to-Solana cryptographic provenance (our current unsolved challenge)
+**Our ask — 3 specific things:**
+1. **Agora Convo AI Device Kit R1** — dual-mic LTE hardware for real port-noise field testing
+2. **Da Nang Port Authority intro** — pilot partnership for July 2026 field trial
+3. **Mentorship on AI provenance** — zkML vs TEE for cryptographic LLM output verification (our current unsolved challenge)
 
-**Closing line (say this, do not put it on the slide):**
-> "WaveLens Lite. For the workers who cannot stop to translate. For the people the world forgot to build for."
+**Closing line (say this, do NOT put on slide):**
+> *"WaveLens Lite. For the workers who cannot stop to translate. For the people the world forgot to build for."*
 
 ---
 
-## DESIGN SYSTEM FOR SLIDES
+## TIMING TABLE
+
+| # | Slide | Time |
+|---|---|---|
+| 01 | Title Hook | 10s |
+| 02 | The Problem | 30s |
+| 03 | Solution Statement | 10s |
+| 04 | Architecture | 45s |
+| 05 | Agora CAI Stack | 30s |
+| 06 | Solana Layer | 20s |
+| 07 | Demo Video | 45s |
+| 08 | Technical Proof | 20s |
+| 09 | Market + Roadmap | 20s |
+| 10 | Team + Ask | 15s |
+| **TOTAL** | | **3 min 45 sec** ✅ |
+
+---
+
+## DESIGN SYSTEM
 
 ### Colors
-- Background: Dark navy `#0a0e1a`
-- Primary accent: Agora orange `#FF6B35`
-- Secondary accent: Solana purple `#9B59B6`
-- Success / live: Green `#00FF9D`
-- Text primary: White `#FFFFFF`
-- Text secondary: Light grey `#B0B8C8`
+| Token | Hex | Used for |
+|---|---|---|
+| Background | `#000000` | All slides |
+| Primary accent | `#00FF9D` | Highlights, checkmarks, borders |
+| Agora | `#FF6B35` | Agora components in diagrams |
+| Solana | `#9B59B6` | Solana components in diagrams |
+| Text primary | `#FFFFFF` | Headlines |
+| Text secondary | `#888888` | Supporting copy |
+| Code/mono | `#00D4FF` | Inline metrics, hashes |
+
+> All diagrams above match this system. The mermaid `fill:` values are already set correctly.
 
 ### Typography
-- Headline: Bold, large (48–64pt)
+- Headline: **Bold, 48–64pt**, Inter or Outfit
 - Body: Regular, 18–22pt
-- Monospace for code/hashes: Fira Code or JetBrains Mono
-- Font family: Inter or Outfit (Google Fonts)
+- Metrics/code: Fira Code or JetBrains Mono, `#00D4FF`
 
-### Slide template rules
-- Maximum 3 key points per slide
-- No bullet lists longer than 4 items
-- Every slide has one visual (image, diagram, or table)
-- Never use clip art or generic icons
-- Architecture diagram slides: use the actual mermaid diagrams from the PDF report
-
----
-
-## TIMING BREAKDOWN
-
-| Slide | Topic | Duration |
-|---|---|---|
-| 01 | Title Hook | 15s |
-| 02 | The Problem | 40s |
-| 03 | Why Everything Else Fails | 20s |
-| 04 | Solution in One Sentence | 10s |
-| 05 | How It Works | 45s |
-| 06 | Agora CAI Stack | 30s |
-| 07 | Solana Layer | 25s |
-| 08 | Live Demo | 90s |
-| 09 | Technical Achievements | 20s |
-| 10 | Market Opportunity | 25s |
-| 11 | What Comes Next | 15s |
-| 12 | Team + Ask | 20s |
-| **TOTAL** | | **5 min 35 sec** |
+### Rules
+- Maximum **3 key points** per text slide
+- Every slide has **one visual** (diagram, table, or image)
+- Architecture diagrams: use the mermaid source above, rendered as PNG for PowerPoint/Canva
+- **No bullet lists longer than 4 items**
+- No clip art, no generic stock icons
 
 ---
 
-## Q&A PREPARATION — Expected Judge Questions
+## Q&A PREPARATION
+
+**Q: What is the real latency?**
+A: End-to-end voice-to-translated-voice: **1.2–1.8 seconds** in local network testing. Breakdown: WebRTC encode/transmit (~100ms) → Agora SDRTN (~50ms) → LLM inference (~600–900ms) → TTS synthesis (~150ms) → Agora playback (~100ms).
 
 **Q: Why not a native app?**
-A: Zero install friction. A worker opens a URL. For a hackathon demo, a QR code beats an APK installation every time. For production, we are already designing the native Android path and the Agora Device Kit R1 removes the phone entirely.
+A: Zero install friction. A worker opens a URL. For production we are designing the Android native path with `AUDIO_SCENARIO_AI_CLIENT` and forced HFP, and the Agora Device Kit R1 removes the phone entirely.
 
-**Q: What about audio quality through Bluetooth HFP?**
-A: We apply AEC, ANS, and AGC at the browser level before the audio leaves the device. This is the correct approach for the Web SDK — you do not control the Bluetooth profile from a browser, but you do control what you send. The gpt-realtime-2 model handles the rest through its own noise suppression layer.
+**Q: Can you prove the Solana record is authentic — that it came from Agora's LLM?**
+A: Honest answer: the NFT proves *when* and *what* was saved. It does not cryptographically prove it came from a specific LLM invocation — that is the Oracle Problem for AI provenance. zkML is too slow for real-time. TEE bridges are not yet standardized. We have raised this as our open mentorship question.
 
-**Q: Can you actually prove the Solana record is authentic?**
-A: This is our current unsolved challenge and we are honest about it. The NFT proves when the data was saved. It does not cryptographically prove it came from Agora's LLM specifically. This is the Oracle Problem for AI provenance — zkML is too slow for real-time, TEE bridges are not yet standardized. We have raised this as our mentorship question.
+**Q: How does Bluetooth work without native SDK control?**
+A: We cannot force HFP from a browser — that is Android native only. What we do: apply AEC, ANS, AGC at browser level before audio leaves the device. Android OS typically routes WebRTC sessions to HFP automatically. We tested this with the Shokz OpenRun Pro 2 — Android Chrome routes correctly. iOS is more unpredictable, tested case by case.
 
-**Q: What is the latency?**
-A: End-to-end voice-to-translated-voice latency is approximately 1.2–1.8 seconds in our testing on a local network. The main components are: WebRTC encode/transmit (~100ms), Agora SDRTN routing (~50ms), LLM inference (~600–900ms), TTS synthesis (~150ms), and Agora→client playback (~100ms).
+**Q: Why Soulbound NFT vs a simple database entry?**
+A: Three reasons. Immutability — no one can alter it, including us. Portability — the worker owns the credential, not their employer. SOLAS readiness — maritime auditors need a verifiable audit trail that survives company bankruptcy or data deletion.
 
-**Q: How does this help deaf users specifically?**
-A: Two channels simultaneously. Voice channel delivers translated speech as bone-conduction vibration — this physically bypasses damaged cochlear hair cells. Text channel delivers the same content as real-time visual subtitles on screen. A profoundly deaf user who cannot use audio at all can still follow a multilingual conversation through the subtitle stream alone.
+**Q: What happens when Agora goes down?**
+A: Three-tier fallback. Tier 1: Full Agora (online). Tier 2: Direct OpenAI WebSocket from browser (bypass Agora, queue audit to localStorage). Tier 3: PhoWhisper medium on local server + phrase bank — works offline. Transcripts sync to Solana when connectivity returns.

@@ -22,17 +22,23 @@ function formatDuration(s: number): string {
 
 const LiveSession = dynamic(() => import('@/components/LiveSession'), { ssr: false });
 
-// ═══ Canvas Waveform ═══
+// ═══ Canvas Waveform — Circular Oscilloscope ═══
 function WaveformStage({ micState }: { micState: MicState }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const offsetRef = useRef(0);
   const rafRef = useRef<number>(0);
+  const noiseRef = useRef<number[]>([]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
     if (!canvas || !container) return;
+
+    // Seed noise buffer for organic spike variation
+    if (noiseRef.current.length === 0) {
+      noiseRef.current = Array.from({ length: 360 }, () => Math.random());
+    }
 
     const resize = () => {
       const dpr = window.devicePixelRatio || 1;
@@ -52,38 +58,95 @@ function WaveformStage({ micState }: { micState: MicState }) {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    let reducedMotion = false;
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
-    reducedMotion = mq.matches;
-    mq.addEventListener('change', (e) => { reducedMotion = e.matches; });
-
     const draw = () => {
       const w = canvas.width / (window.devicePixelRatio || 1);
       const h = canvas.height / (window.devicePixelRatio || 1);
       ctx.clearRect(0, 0, w, h);
 
-      const waves = [
-        { color: '#FF6B35', amp: micState === 'listening' && !reducedMotion ? 80 + Math.random() * 40 : micState === 'translating' ? 40 : 20, freq: 0.012, speed: 1.5, lw: 2.5, phase: 0 },
-        { color: '#00D4FF', amp: micState === 'translating' && !reducedMotion ? 60 + Math.random() * 40 : 15, freq: 0.008, speed: 1.2, lw: 2, phase: Math.PI / 3 },
-        { color: '#9B59B6', amp: reducedMotion ? 12 : 8 + Math.sin(offsetRef.current * 0.01) * 10, freq: 0.005, speed: 0.8, lw: 1.5, phase: Math.PI / 1.5 },
-      ];
+      const cx = w / 2;
+      const cy = h / 2;
+      const baseR = Math.min(w, h) * 0.28;
 
-      waves.forEach((wave) => {
-        ctx.beginPath();
-        ctx.strokeStyle = wave.color;
-        ctx.lineWidth = wave.lw;
-        ctx.shadowBlur = reducedMotion ? 0 : 12;
-        ctx.shadowColor = wave.color;
+      const t = offsetRef.current;
+      const isListening = micState === 'listening';
+      const isTranslating = micState === 'translating';
+      const isIdle = micState === 'idle' || micState === 'connecting';
 
-        for (let x = 0; x < w; x++) {
-          const y = h / 2 + wave.amp * Math.sin((x + offsetRef.current * wave.speed) * wave.freq + wave.phase + (x * 0.001));
-          if (x === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
+      // ── Outer glow ring ──
+      const glowR = baseR + (isListening ? 18 + Math.sin(t * 0.07) * 8 : isTranslating ? 10 : 4);
+      const glowGrad = ctx.createRadialGradient(cx, cy, glowR - 24, cx, cy, glowR + 24);
+      glowGrad.addColorStop(0, 'rgba(0,255,157,0.0)');
+      glowGrad.addColorStop(0.5, isListening ? 'rgba(0,255,157,0.12)' : 'rgba(0,255,157,0.04)');
+      glowGrad.addColorStop(1, 'rgba(0,255,157,0.0)');
+      ctx.beginPath();
+      ctx.arc(cx, cy, glowR + 24, 0, Math.PI * 2);
+      ctx.fillStyle = glowGrad;
+      ctx.fill();
+
+      // ── Radial spike ring ──
+      const segments = 180;
+      ctx.beginPath();
+      for (let i = 0; i <= segments; i++) {
+        const angle = (i / segments) * Math.PI * 2 - Math.PI / 2;
+        const noise = noiseRef.current[Math.floor(i / segments * 360)] ?? 0.5;
+        const slowWave = Math.sin(angle * 3 + t * 0.04) * 0.5 + 0.5;
+        const fastWave = Math.sin(angle * 7 + t * 0.09) * 0.5 + 0.5;
+
+        let spike = 0;
+        if (isListening) {
+          // Organic reactive spikes
+          spike = (noise * 0.4 + slowWave * 0.35 + fastWave * 0.25) * (55 + Math.sin(t * 0.05) * 20);
+          // Evolve noise slowly
+          if (i % 8 === 0) noiseRef.current[Math.floor(i / segments * 360)] = noise * 0.92 + Math.random() * 0.08;
+        } else if (isTranslating) {
+          spike = (slowWave * 0.6 + fastWave * 0.4) * (22 + Math.sin(t * 0.06) * 8);
+        } else {
+          spike = (Math.sin(angle * 4 + t * 0.02) * 0.5 + 0.5) * (isIdle ? 6 : 4);
         }
-        ctx.stroke();
-      });
 
-      if (!reducedMotion) offsetRef.current++;
+        const r = baseR + spike;
+        const x = cx + r * Math.cos(angle);
+        const y = cy + r * Math.sin(angle);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+
+      // Fill with subtle neon tint
+      const fillGrad = ctx.createRadialGradient(cx, cy, baseR * 0.5, cx, cy, baseR * 1.6);
+      fillGrad.addColorStop(0, 'rgba(0,255,157,0.04)');
+      fillGrad.addColorStop(1, 'rgba(0,255,157,0.0)');
+      ctx.fillStyle = fillGrad;
+      ctx.fill();
+
+      // Stroke the spike ring
+      ctx.lineWidth = isListening ? 2.5 : 2;
+      ctx.strokeStyle = '#00FF9D';
+      ctx.shadowBlur = isListening ? 18 : isTranslating ? 10 : 6;
+      ctx.shadowColor = '#00FF9D';
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // ── Inner base circle ──
+      ctx.beginPath();
+      ctx.arc(cx, cy, baseR * 0.08, 0, Math.PI * 2);
+      ctx.fillStyle = '#00FF9D';
+      ctx.shadowBlur = 16;
+      ctx.shadowColor = '#00FF9D';
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // ── Concentric pulse ring ──
+      if (isListening) {
+        const pulseR = baseR * (0.35 + Math.sin(t * 0.06) * 0.05);
+        ctx.beginPath();
+        ctx.arc(cx, cy, pulseR, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(0,255,157,0.25)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+
+      offsetRef.current++;
       rafRef.current = requestAnimationFrame(draw);
     };
 
@@ -97,6 +160,7 @@ function WaveformStage({ micState }: { micState: MicState }) {
     </div>
   );
 }
+
 
 // ═══ Current turn live output ═══
 function LiveOutput({ turn, micState }: { turn: Turn | null; micState: MicState }) {
@@ -351,13 +415,13 @@ export default function DemoPage() {
       <header className="relative h-12 flex items-center justify-between px-3 sm:px-4 z-20 shrink-0" style={{ background: 'transparent' }}>
         <div className="flex items-center gap-3">
           <Link href="/" className="text-sm text-white/70 hover:text-white transition-colors no-underline font-mono">← Back</Link>
-          <span className="text-sm font-semibold text-white font-mono hidden sm:inline">WaveLens Lite</span>
+          <span className="text-sm font-semibold text-[#00FF9D] font-mono hidden sm:inline" style={{ textShadow: '0 0 10px rgba(0,255,157,0.5)' }}>WaveLens Lite</span>
         </div>
         <div className="flex items-center gap-2">
           {(['maritime', 'coaching'] as const).map((d) => (
             <button key={d} onClick={() => setDomain(d)}
               className={`px-3 py-1 rounded-full text-xs font-medium transition-all min-h-[32px] ${
-                domain === d ? 'bg-[#FF6B35] text-white' : 'bg-[rgba(255,255,255,0.08)] text-white/50 hover:text-white'
+                domain === d ? 'bg-[#00FF9D] text-black font-semibold' : 'bg-[rgba(255,255,255,0.08)] text-white/50 hover:text-white/80 hover:border hover:border-[#00FF9D]/30'
               }`}>
               {d === 'maritime' ? '⚓ Maritime' : '🏊 Coaching'}
             </button>
@@ -370,9 +434,9 @@ export default function DemoPage() {
         </select>
       </header>
 
-      {/* ═══ Waveform Stage ═══ */}
+      {/* ═══ Waveform Stage — fills center of screen ═══ */}
       <div className="relative flex-1 min-h-0 flex flex-col">
-        <div className="h-[35vh] sm:h-[40vh] w-full relative">
+        <div className="flex-1 w-full relative min-h-0">
           <WaveformStage micState={micState} />
           {/* State label below canvas */}
           <div className="absolute bottom-2 left-1/2 -translate-x-1/2">
@@ -439,15 +503,15 @@ export default function DemoPage() {
           <button onClick={toggleMic} disabled={!sessionReady}
             className={`relative w-16 h-16 rounded-full flex items-center justify-center transition-all duration-200 ${
               !sessionReady ? 'border-2 border-[#222] bg-[#000] text-[#333] cursor-not-allowed' :
-              micState === 'idle' ? 'border-2 border-[#222] bg-[#000] text-[#444] hover:border-[#444]' :
-              micState === 'listening' ? 'bg-[#FF6B35] text-white' :
+              micState === 'idle' ? 'border-2 border-[#00FF9D]/30 bg-[#000] text-[#00FF9D]/60 hover:border-[#00FF9D]/60' :
+              micState === 'listening' ? 'bg-[#00FF9D] text-black' :
               micState === 'translating' ? 'bg-[#00D4FF] text-white' : 'bg-[rgba(239,68,68,0.3)] text-white'
             }`}
             aria-label={micState === 'idle' ? 'Start speaking' : 'Stop'}
           >
             {/* Ripple rings */}
             {micState === 'listening' && [1, 2, 3].map((i) => (
-              <span key={i} className="absolute inset-0 rounded-full border border-[rgba(255,107,53,0.4)] animate-ripple"
+              <span key={i} className="absolute inset-0 rounded-full border border-[rgba(0,255,157,0.4)] animate-ripple"
                 style={{ animationDelay: `${i * 0.5}s` }} />
             ))}
             {!sessionReady ? (
